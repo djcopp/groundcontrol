@@ -1,0 +1,59 @@
+{
+  "name": "agent-visualiser",
+  "version": "0.1.0",
+  "description": "Watch your Claude Code agents flow through pipes: live view of every running claude process, where it was launched from, and whether it is working, running a tool, or waiting on you.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "agent-visualiser": "dist/server/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.4"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "agents",
+    "visualiser",
+    "monitoring",
+    "observability"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"tsx watch src/cli.ts --no-open --port 4317\" \"vite\"",
+    "dev:demo": "concurrently -k -n server,web -c cyan,magenta \"tsx watch src/cli.ts --demo --no-open --port 4317\" \"vite\"",
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "start": "node dist/server/cli.js",
+    "demo": "node dist/server/cli.js --demo",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run"
+  },
+  "packageManager": "pnpm@10.20.0",
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "concurrently": "^10.0.7",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
