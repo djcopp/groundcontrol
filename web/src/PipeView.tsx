@@ -213,14 +213,23 @@ function NodeCard({
   }
 
   const total = Object.values(node.counts).reduce((s, v) => s + (v ?? 0), 0);
-  const sub =
-    node.type === "via" && node.proc
+  const agentsText = `${total} agent${total === 1 ? "" : "s"}`;
+  const hostText = node.host
+    ? node.host.status === "live"
+      ? `${node.host.local ? "this machine" : "ssh"} · ${agentsText}`
+      : node.host.status === "connecting"
+        ? "connecting…"
+        : (node.host.message ?? "disconnected")
+    : undefined;
+  const sub = hostText
+    ? hostText
+    : node.proc?.kind === "script"
       ? (homeRelative(node.proc.script) ?? homeRelative(node.proc.cwd) ?? node.proc.command)
-      : `${total} agent${total === 1 ? "" : "s"}`;
+      : agentsText;
   return (
     <button
       type="button"
-      className={`${cls} s-${node.flow}`}
+      className={`${cls} s-${node.flow}${node.host ? ` host h-${node.host.status}` : ""}`}
       style={style}
       onClick={click}
       title={node.proc?.command}
@@ -229,7 +238,7 @@ function NodeCard({
       <span className="port out" />
       <div className="card-top">
         <AppIcon
-          kind={node.kind}
+          kind={node.host?.local ? "host-local" : node.kind}
           label={node.label}
           proc={node.proc}
           size={node.type === "source" ? 30 : 26}

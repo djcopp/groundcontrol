@@ -41,6 +41,8 @@ export type ProcessKind =
 
 export interface ProcessNode {
   pid: number;
+  /** Remote host name; undefined for this machine. */
+  host?: string;
   ppid: number;
   kind: ProcessKind;
   /** Short human label, e.g. "iTerm2", "tmux", "orchestrate.py". */
@@ -114,6 +116,8 @@ export interface Agent {
   timeline: TimelineSegment[];
   /** Pids from the agent's parent up to the top of its launch chain (nearest first). */
   ancestry: number[];
+  /** Remote host name (an ssh target); undefined for this machine. */
+  host?: string;
   /** Number of tool calls seen in the transcript window. */
   toolCount: number;
   ended?: boolean;
@@ -127,9 +131,28 @@ export interface Snapshot {
   /** Duration of the timeline window, ms. */
   windowMs: number;
   agents: Agent[];
-  /** Every process referenced by an agent's ancestry, keyed by pid. */
+  /** Every process referenced by an agent's ancestry, keyed by procKey(host, pid). */
   processes: Record<string, ProcessNode>;
+  /** Machines being watched. Absent or one entry means "just this machine". */
+  hosts?: HostStatus[];
   warnings: string[];
+}
+
+export interface HostStatus {
+  /** "local" for this machine, else the ssh target as given on the command line. */
+  name: string;
+  /** Display label: the hostname for local, the ssh target for remotes. */
+  label: string;
+  local: boolean;
+  status: "live" | "connecting" | "error";
+  /** Last error line from ssh or the remote collector. */
+  message?: string;
+  lastSnapshotAt?: number;
+}
+
+/** Key of a process in Snapshot.processes: pids are only unique per machine. */
+export function procKey(host: string | undefined, pid: number): string {
+  return host ? `${host}/${pid}` : String(pid);
 }
 
 export interface CodeSnippet {

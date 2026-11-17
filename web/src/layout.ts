@@ -1,9 +1,11 @@
-import type {
-  Agent,
-  AgentState,
-  ProcessKind,
-  ProcessNode,
-  Snapshot,
+import {
+  type Agent,
+  type AgentState,
+  type HostStatus,
+  type ProcessKind,
+  type ProcessNode,
+  procKey,
+  type Snapshot,
 } from "../../src/shared/types.js";
 
 export type NodeType = "source" | "via" | "agent" | "subagent";
@@ -12,8 +14,10 @@ export interface LNode {
   id: string;
   type: NodeType;
   label: string;
-  kind: ProcessKind | "subagent" | "background";
+  kind: ProcessKind | "subagent" | "background" | "host";
   proc?: ProcessNode;
+  /** Set on machine roots when more than one machine is watched. */
+  host?: HostStatus;
   agent?: Agent;
   children: LNode[];
   parent?: LNode;
@@ -85,23 +89,11 @@ const PRIORITY: AgentState[] = [
 ];
 export const priority = (s: AgentState) => PRIORITY.indexOf(s);
 
-/** Ordering for "what needs looking at" rollups on source nodes. */
-const ATTENTION_ORDER: AgentState[] = [
-  "ended",
-  "done",
-  "unknown",
-  "thinking",
-  "tool",
-  "waiting",
-  "blocked",
-];
-export const attention = (s: AgentState) => ATTENTION_ORDER.indexOf(s);
-
 /** Visible launch chain from the top (source) down to the agent's direct parent. */
 export function visibleChain(agent: Agent, processes: Snapshot["processes"]): ProcessNode[] {
   const chain: ProcessNode[] = [];
   for (const pid of agent.ancestry) {
-    const p = processes[pid];
+    const p = processes[procKey(agent.host, pid)];
     if (!p) continue;
     if (p.kind === "agent") break; // nested agent: placed under the outer agent instead
     if (VISIBLE.has(p.kind)) chain.push(p);
@@ -168,6 +160,28 @@ export function buildLayout(snap: Snapshot, opts: LayoutOptions = {}): Layout {
     parent.children.push(child);
   };
 
+  // With remote hosts, every machine becomes the root of its own tree.
+  const hosts = snap.hosts ?? [];
+  const multiHost = hosts.length > 1 || hosts.some((h) => !h.local) || agents.some((a) => a.host);
+  const hostRoot = (name: string): LNode => {
+    const id = `host:${name}`;
+    let n = byId.get(id);
+    if (!n) {
+      const status = hosts.find((h) => h.name === name) ?? {
+        name,
+        label: name === "local" ? snap.host : name,
+        local: name === "local",
+        status: "live" as const,
+      };
+      n = makeNode({ id, type: "source", label: status.label, kind: "host", host: status });
+      n.order = status.local ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+      byId.set(id, n);
+      roots.push(n);
+    }
+    return n;
+  };
+  if (multiHost) for (const h of hosts) hostRoot(h.name);
+
   for (const a of agents) {
     const node = byId.get(a.id);
     if (!node) continue;
@@ -179,30 +193,38 @@ export function buildLayout(snap: Snapshot, opts: LayoutOptions = {}): Layout {
       }
     }
     const chain = visibleChain(a, snap.processes);
-    let parent: LNode | undefined;
+    const machine = multiHost ? hostRoot(a.host ?? "local") : undefined;
+    let parent: LNode | undefined = machine;
     if (chain.length === 0) {
-      const rootId = "root:background";
+      const rootId = `root:background${a.host ? `:${a.host}` : ""}`;
       let root = byId.get(rootId);
       if (!root) {
-        root = makeNode({ id: rootId, type: "source", label: "Background", kind: "background" });
+        root = makeNode({
+          id: rootId,
+          type: machine ? "via" : "source",
+          label: "Background",
+          kind: "background",
+        });
         byId.set(rootId, root);
-        roots.push(root);
+        if (!machine) roots.push(root);
       }
+      if (machine && !root.parent) attach(machine, root);
       parent = root;
     }
     chain.forEach((p, i) => {
-      const id = `proc:${p.pid}`;
+      const id = `proc:${procKey(p.host, p.pid)}`;
       let n = byId.get(id);
+      const isRoot = i === 0 && !machine;
       if (!n) {
         n = makeNode({
           id,
-          type: i === 0 ? "source" : "via",
+          type: isRoot ? "source" : "via",
           label: p.label,
           kind: p.kind,
           proc: p,
         });
         byId.set(id, n);
-        if (i === 0) roots.push(n);
+        if (isRoot) roots.push(n);
       }
       if (parent && !n.parent) attach(parent, n);
       parent = n;
@@ -225,7 +247,12 @@ export function buildLayout(snap: Snapshot, opts: LayoutOptions = {}): Layout {
     n.children.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
   };
   for (const r of roots) rollup(r);
-  roots.sort((a, b) => a.label.localeCompare(b.label) || a.order - b.order);
+  roots.sort(
+    (a, b) =>
+      Number(!!b.host?.local) - Number(!!a.host?.local) ||
+      a.label.localeCompare(b.label) ||
+      a.order - b.order,
+  );
 
   // Columns: sources at 0, intermediates by depth, top-level agents aligned in one column.
   let agentCol = 1;

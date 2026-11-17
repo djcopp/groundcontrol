@@ -293,6 +293,17 @@
     "trademark": false
   },
   {
+    "file": "ui-laptop.svg",
+    "icon": "ui:laptop",
+    "name": "Laptop",
+    "kind": "line",
+    "source": "@iconify-json/lucide@1.2.100",
+    "author": "Lucide Contributors",
+    "licence": "ISC",
+    "url": "https://github.com/lucide-icons/lucide",
+    "trademark": false
+  },
+  {
     "file": "ui-minus.svg",
     "icon": "ui:minus",
     "name": "Minus",
@@ -340,6 +351,17 @@
     "file": "ui-plus.svg",
     "icon": "ui:plus",
     "name": "Plus",
+    "kind": "line",
+    "source": "@iconify-json/lucide@1.2.100",
+    "author": "Lucide Contributors",
+    "licence": "ISC",
+    "url": "https://github.com/lucide-icons/lucide",
+    "trademark": false
+  },
+  {
+    "file": "ui-server.svg",
+    "icon": "ui:server",
+    "name": "Server",
     "kind": "line",
     "source": "@iconify-json/lucide@1.2.100",
     "author": "Lucide Contributors",

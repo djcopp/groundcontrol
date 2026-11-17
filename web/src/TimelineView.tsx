@@ -56,13 +56,15 @@ export function TimelineView({
     };
     for (const a of ordered) if (!a.parentAgentId || !byId.has(a.parentAgentId)) place(a);
     for (const a of ordered) place(a);
+    const multiHost = rows.some((a) => a.host);
     for (const a of rows) {
       const top = topOf(a);
       const src = visibleChain(top, snapshot.processes)[0];
-      const key = src ? `proc:${src.pid}` : "background";
+      const key = `${top.host ?? ""}|${src ? src.pid : "background"}`;
+      const where = src?.label ?? "Background";
       const g = map.get(key) ?? {
         key,
-        label: src?.label ?? "Background",
+        label: multiHost ? `${top.host ?? snapshot.host} · ${where}` : where,
         kind: src?.kind ?? "background",
         proc: src,
         agents: [],

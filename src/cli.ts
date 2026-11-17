@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { Collector, DEFAULT_OPTIONS } from "./collector/collector.js";
 import { DemoSource } from "./demo.js";
+import { MultiSource, RemoteHost, runStream } from "./remote.js";
 import { type Source, startServer } from "./server.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,9 @@ function version(): string {
     return "0.0.0";
   }
 }
+
+// Deliberately not `npx -y ...`: that would download and run whatever is published under the name.
+const DEFAULT_REMOTE_CMD = "agent-visualiser --stream";
 
 const HELP = `agent-visualiser: watch your Claude Code agents flow.
 
@@ -36,6 +40,14 @@ Options:
       --no-details      Hide tool arguments (commands, file names) from the UI
       --json            Print one snapshot as JSON and exit
       --no-open         Don't open a browser
+
+Remote machines (over SSH, no ports opened):
+      --remote <target> Also watch agents on an SSH host. Repeatable. Any ssh target works:
+                        an alias from ~/.ssh/config, user@host, a jump-host alias...
+      --remote-cmd <c>  Command run on the remote (default "${DEFAULT_REMOTE_CMD}")
+      --ssh <cmd>       SSH client to use (default "ssh"; e.g. "tsh ssh", "gcloud compute ssh")
+      --no-local        Only show remote hosts, not this machine
+      --stream          Remote end: print snapshots as JSON lines on stdout (used by --remote)
   -v, --version
   -h, --help
 `;
@@ -66,6 +78,11 @@ async function main() {
       details: { type: "boolean", default: true },
       json: { type: "boolean" },
       open: { type: "boolean", default: true },
+      remote: { type: "string", multiple: true },
+      "remote-cmd": { type: "string" },
+      ssh: { type: "string" },
+      local: { type: "boolean", default: true },
+      stream: { type: "boolean" },
       version: { type: "boolean", short: "v" },
       help: { type: "boolean", short: "h" },
     },
@@ -86,9 +103,28 @@ async function main() {
   const claudeDir =
     values["claude-dir"] ?? process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), ".claude");
   const details = values.details !== false;
-  const source: Source = values.demo
+  const localSource: Source = values.demo
     ? new DemoSource(windowMs)
     : new Collector({ ...DEFAULT_OPTIONS, claudeDir, windowMs, details });
+
+  if (values.stream) {
+    runStream(localSource, intervalMs);
+    return;
+  }
+
+  const remoteTargets = values.remote ?? [];
+  let multi: MultiSource | undefined;
+  if (remoteTargets.length > 0) {
+    const remoteCommand = values["remote-cmd"] ?? DEFAULT_REMOTE_CMD;
+    const remotes = remoteTargets.map(
+      (target) => new RemoteHost({ target, remoteCommand, ssh: values.ssh ?? "ssh" }),
+    );
+    multi = new MultiSource(values.local === false ? undefined : localSource, remotes);
+    multi.start();
+  } else if (values.local === false) {
+    throw new Error("--no-local needs at least one --remote host");
+  }
+  const source: Source = multi ?? localSource;
 
   if (values.json) {
     process.stdout.write(`${JSON.stringify(await source.snapshot(), null, 2)}\n`);
@@ -118,6 +154,7 @@ async function main() {
   if (values.open !== false && existsSync(webRoot)) openBrowser(url);
 
   const shutdown = () => {
+    multi?.stop();
     close();
     process.exit(0);
   };

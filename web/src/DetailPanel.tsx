@@ -139,6 +139,7 @@ function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) 
       </section>
 
       <section className="kvs">
+        <Row k="Machine" v={agent.host ? `${agent.host} (ssh)` : undefined} mono />
         <Row k="Project" v={agent.project} />
         <Row k="Directory" v={homeRelative(agent.cwd)} mono />
         <Row
@@ -223,10 +224,12 @@ function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) 
 
 function ProcessDetail({ proc, snapshot }: { proc: ProcessNode; snapshot: Snapshot }) {
   const descendant = snapshot.agents.find(
-    (a) => a.kind === "agent" && a.ancestry.includes(proc.pid),
+    (a) => a.kind === "agent" && a.host === proc.host && a.ancestry.includes(proc.pid),
   );
   const { trace } = useTrace(descendant?.id);
-  const agents = snapshot.agents.filter((a) => a.ancestry.includes(proc.pid));
+  const agents = snapshot.agents.filter(
+    (a) => a.host === proc.host && a.ancestry.includes(proc.pid),
+  );
   const now = snapshot.generatedAt;
   const chain = trace?.chain.slice(trace.chain.findIndex((c) => c.pid === proc.pid));
   return (
@@ -274,6 +277,56 @@ function ProcessDetail({ proc, snapshot }: { proc: ProcessNode; snapshot: Snapsh
   );
 }
 
+function HostDetail({ name, snapshot }: { name: string; snapshot: Snapshot }) {
+  const host = snapshot.hosts?.find((h) => h.name === name);
+  const agents = snapshot.agents.filter((a) => (a.host ?? "local") === name);
+  const now = snapshot.generatedAt;
+  if (!host) return <p className="muted">This machine is no longer watched.</p>;
+  return (
+    <>
+      <header className="panel-head">
+        <div className="panel-kicker">
+          {host.local ? "This machine" : "Remote machine over SSH"}
+        </div>
+        <h2>
+          <AppIcon kind={host.local ? "host-local" : "host"} label={host.label} size={28} />{" "}
+          {host.label}
+        </h2>
+        <div className={`panel-state h-${host.status}`}>
+          <span
+            className={`dot ${host.status === "live" ? "s-thinking" : host.status === "error" ? "s-blocked" : "s-waiting"}`}
+          />
+          {host.status === "live"
+            ? "Connected"
+            : host.status === "connecting"
+              ? "Connecting"
+              : "Not connected"}
+        </div>
+      </header>
+      {host.message && (
+        <section>
+          <h3>Last message</h3>
+          <code className="cmd block">{host.message}</code>
+          {!host.local && host.status === "error" && (
+            <p className="muted small">
+              Check that <code>ssh {host.name}</code> works without a password prompt (keys or an
+              agent), and that Node 22+ is on the remote PATH for a non-interactive shell. Use{" "}
+              <code>--remote-cmd</code> to point at a different install.
+            </p>
+          )}
+        </section>
+      )}
+      <section className="kvs">
+        <Row
+          k="Last data"
+          v={host.lastSnapshotAt ? `${duration(now - host.lastSnapshotAt)} ago` : "never"}
+        />
+        <Row k="Agents" v={agents.filter((a) => a.kind === "agent").length} />
+      </section>
+    </>
+  );
+}
+
 export function DetailPanel({
   id,
   snapshot,
@@ -294,7 +347,9 @@ export function DetailPanel({
         <AgentDetail agent={agent} snapshot={snapshot} />
       ) : proc ? (
         <ProcessDetail proc={proc} snapshot={snapshot} />
-      ) : id === "root:background" ? (
+      ) : id.startsWith("host:") ? (
+        <HostDetail name={id.slice(5)} snapshot={snapshot} />
+      ) : id.startsWith("root:background") ? (
         <header className="panel-head">
           <div className="panel-kicker">Background</div>
           <h2>No visible launcher</h2>

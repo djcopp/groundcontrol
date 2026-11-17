@@ -51,6 +51,8 @@ const GLYPH_BY_KIND: Record<string, string> = {
   init: "cpu",
   other: "settings",
   background: "clock",
+  host: "server",
+  "host-local": "laptop",
   subagent: "workflow",
   agent: "terminal",
 };
