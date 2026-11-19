@@ -1,49 +1,48 @@
 /*
-  agent-visualiser UI. Design system dealt by tasteskill 2.5 (page kind: software):
-  palette green-black-bone, type Geist + Geist Mono (self-hosted), radius sharp, real app logos, one
-  Lucide glyph set. State colours are data, so they are the only saturated colour; never violet.
+  Ground Control UI. Design system dealt by tasteskill 2.5 (page kind: software): palette
+  blue-black-cornflower (night and sky blue), type Reddit Sans + JetBrains Mono (self-hosted),
+  radius sharp, real app logos, one Lucide glyph set. State colours are data; never violet.
+  Routes are drawn as taxiways with planes moving along them.
 */
 
 /* ---------- tokens ---------- */
 :root {
-  --bg: #161c1a;
-  --surface: #1f2725;
-  --panel: #1a211f;
-  --card: #1f2725;
-  --ink: #e3e2da;
-  --text-2: #b9bbb3;
-  --muted: #8e948d;
-  --accent: #9fc7b8;
-  --accent-ink: #161c1a;
-  --line: color-mix(in oklab, var(--ink) 13%, var(--bg));
-  --line-2: color-mix(in oklab, var(--ink) 22%, var(--bg));
-  --dots: color-mix(in oklab, var(--ink) 9%, var(--bg));
-  --wall: #2c3633;
-  --wall-hi: #3d4945;
-  --empty: #111614;
+  --bg: #0a0d14;
+  --canvas: #0b0f17;
+  --surface: #131824;
+  --surface-2: #181e2c;
+  --ink: #e9edf3;
+  --text-2: #b4bccb;
+  --muted: #8891a1;
+  --accent: #5ab9fc;
+  --line: color-mix(in oklab, var(--ink) 10%, var(--bg));
+  --line-2: color-mix(in oklab, var(--ink) 18%, var(--bg));
+  --dots: color-mix(in oklab, var(--ink) 7%, var(--canvas));
+  --empty: #161c29;
+  --tarmac: #1b2130;
+  --tarmac-edge: #2c3546;
 
-  --c-thinking: #5ccfb4;
-  --c-tool: #7fa8f5;
-  --c-blocked: #f0725f;
-  --c-waiting: #e2b553;
-  --c-done: #66706b;
-  --c-ended: #434c49;
-  --c-unknown: #7d857f;
+  --c-thinking: #5ab9fc;
+  --c-tool: #4fd8b4;
+  --c-blocked: #ff5a5f;
+  --c-waiting: #f2b84b;
+  --c-done: #5c6577;
+  --c-ended: #454d5d;
+  --c-unknown: #7a8495;
 
   --r-sm: 4px;
   --r-md: 6px;
   --r-lg: 8px;
 
-  --font-text: "Geist Variable", "Geist", system-ui, sans-serif;
+  --font-text: "Reddit Sans Variable", "Reddit Sans", system-ui, sans-serif;
   --font-mono:
-    "Geist Mono Variable", "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   --t-body: 14px;
   --t-label: 13px;
   --t-title: 15px;
   --t-h2: 20px;
 
-  /* motion tokens (tasteskill motion.md) */
   --m-in: 140ms;
   --m-out: 200ms;
   --m-press: 90ms;
@@ -53,31 +52,29 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #e3e2da;
-    --surface: #f1f0eb;
-    --panel: #ebeae4;
-    --card: #f4f3ee;
-    --ink: #161c1a;
-    --text-2: #3c423f;
-    --muted: #555a55;
-    --accent: #2f5d50;
-    --accent-ink: #f4f3ee;
-    --dots: color-mix(in oklab, var(--ink) 12%, var(--bg));
-    --wall: #c6c8c0;
-    --wall-hi: #aeb2a9;
-    --empty: #d6d7cf;
-    --c-thinking: #12866f;
-    --c-tool: #2f62c9;
-    --c-blocked: #c8432f;
-    --c-waiting: #9a6a0c;
-    --c-done: #8a918b;
-    --c-ended: #b3b7af;
-    --c-unknown: #7a807a;
+    --bg: #eef1f5;
+    --canvas: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f8f9fb;
+    --ink: #0a0d14;
+    --text-2: #333a47;
+    --muted: #5a606b;
+    --accent: #1f6fb8;
+    --dots: color-mix(in oklab, var(--ink) 10%, var(--canvas));
+    --empty: #e3e7ee;
+    --tarmac: #d5dae3;
+    --tarmac-edge: #bcc3cf;
+    --c-thinking: #1f6fb8;
+    --c-tool: #0f8a6c;
+    --c-blocked: #d3343a;
+    --c-waiting: #a8700a;
+    --c-done: #8a92a1;
+    --c-ended: #b2b8c3;
+    --c-unknown: #7a8495;
     color-scheme: light;
   }
 }
 
-/* state -> colour, usable anywhere via var(--c) */
 .s-thinking {
   --c: var(--c-thinking);
 }
@@ -113,7 +110,6 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: var(--t-body) / 1.45 var(--font-text);
-  font-feature-settings: "ss01", "tnum";
   -webkit-font-smoothing: antialiased;
 }
 button {
@@ -133,6 +129,14 @@ code,
 }
 .err {
   color: var(--c-blocked);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 :focus-visible {
@@ -163,17 +167,20 @@ code,
   place-items: center;
   flex: none;
   border-radius: var(--r-md);
-  background: color-mix(in oklab, #fff 86%, var(--bg));
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 10%, transparent);
+  background: color-mix(in oklab, #fff 90%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 8%, transparent);
 }
 .ic-tile img {
   object-fit: contain;
   display: block;
 }
 .ic-tile.glyph-tile {
-  background: var(--bg);
+  background: var(--surface-2);
   color: var(--text-2);
   box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.logo-lights {
+  animation: lights 1s linear infinite;
 }
 
 /* ---------- shell ---------- */
@@ -207,11 +214,11 @@ code,
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .brand-name {
   font-size: var(--t-title);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 .demo-badge {
@@ -222,13 +229,12 @@ code,
   border: 1px solid var(--line-2);
   color: var(--muted);
 }
-.logo-flow {
-  stroke-dasharray: 4 5;
-  animation: flow 1.2s linear infinite;
-}
 
-/* one control shape for chips, segmented controls and buttons */
-.chips {
+fieldset.chips {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -261,7 +267,7 @@ code,
   .zoom button:hover,
   .icon-btn:hover {
     background: color-mix(in oklab, var(--ink) 7%, var(--bg));
-    border-color: color-mix(in oklab, var(--ink) 34%, var(--bg));
+    border-color: color-mix(in oklab, var(--ink) 32%, var(--bg));
     color: var(--ink);
     transform: translateY(-1px);
     transition-duration: var(--m-in);
@@ -277,6 +283,7 @@ code,
 .chip b {
   color: var(--ink);
   font-weight: 600;
+  font-family: var(--font-mono);
 }
 .chip .dot {
   width: 8px;
@@ -288,15 +295,19 @@ code,
   color: var(--muted);
 }
 .chip.zero .dot {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 .chip.on {
   border-color: var(--c);
   background: color-mix(in oklab, var(--c) 14%, var(--bg));
   color: var(--ink);
 }
+.chip.s-blocked:not(.zero) {
+  border-color: color-mix(in oklab, var(--c) 55%, var(--line-2));
+  color: var(--ink);
+}
 .chip.s-blocked:not(.zero) .dot {
-  animation: pulse 1s ease-in-out infinite;
+  animation: blink 1s ease-in-out infinite;
 }
 
 .controls {
@@ -336,6 +347,7 @@ code,
 .zoom-level {
   min-width: 56px;
   justify-content: center;
+  font-family: var(--font-mono);
 }
 .icon-btn {
   padding: 0;
@@ -377,7 +389,7 @@ code,
   background: var(--c-done);
 }
 .conn.live .conn-dot {
-  background: var(--c-thinking);
+  background: var(--c-tool);
 }
 .conn.offline .conn-dot {
   background: var(--c-blocked);
@@ -403,14 +415,58 @@ code,
   border-color: var(--c-blocked);
 }
 
+@keyframes lights {
+  to {
+    stroke-dashoffset: -13;
+  }
+}
+@keyframes travel {
+  to {
+    stroke-dashoffset: -300;
+  }
+}
+@keyframes travel-head {
+  from {
+    stroke-dashoffset: -36;
+  }
+  to {
+    stroke-dashoffset: -336;
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+@keyframes breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes stripes {
+  to {
+    background-position: 12px 0;
+  }
+}
+
 /* ---------- canvas ---------- */
 .canvas-scroll {
   position: absolute;
   inset: 0;
   overflow: auto;
-  background-color: var(--bg);
+  background-color: var(--canvas);
   background-image: radial-gradient(var(--dots) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-size: 20px 20px;
 }
 .canvas {
   position: relative;
@@ -427,105 +483,101 @@ code,
   overflow: visible;
 }
 
-.casing {
+/*
+  Routes are taxiways: an edge line, tarmac, and a centreline. Drawn in passes so shared
+  stretches merge into one strip. Centreline lights chase while the agent is working.
+*/
+.edge,
+.tarmac,
+.centreline {
   fill: none;
-  stroke: var(--wall);
-  stroke-width: 16;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.fluid {
-  fill: none;
-  stroke: color-mix(in oklab, var(--c) 50%, var(--empty));
-  stroke-width: 8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.edge {
+  stroke: var(--tarmac-edge);
+  stroke-width: 15;
+}
+.tarmac {
+  stroke: var(--tarmac);
+  stroke-width: 12;
+}
+.centreline {
+  stroke: color-mix(in oklab, var(--c) 70%, var(--tarmac));
+  stroke-width: 1.6;
+  stroke-dasharray: 6 7;
   transition: stroke 400ms;
 }
-.fluid.s-done,
-.fluid.s-unknown {
-  stroke: color-mix(in oklab, var(--c) 35%, var(--empty));
-}
-.fluid.s-ended {
-  stroke: var(--empty);
-}
-.casing.s-ended {
-  stroke-dasharray: 2 8;
-  stroke-linecap: butt;
-}
-.fluid.s-waiting {
-  animation: breathe 2.8s ease-in-out infinite;
-}
-.fluid.s-blocked {
+.centreline.s-thinking,
+.centreline.s-tool {
   stroke: var(--c);
-  animation: breathe 1s ease-in-out infinite;
-}
-.flow {
-  fill: none;
-  stroke: var(--c);
-  stroke-width: 6;
-  stroke-linecap: round;
-  stroke-dasharray: 10 14;
-  animation: flow 0.9s linear infinite;
-}
-/* tool calls flow as bubbles, thinking as a stream: shape tells them apart, not only colour */
-.flow.s-tool {
-  stroke-dasharray: 0.1 12;
-  animation-duration: 0.7s;
-}
-.dim {
-  opacity: 0.18;
-}
-.joint rect {
-  fill: var(--wall-hi);
-}
-.joint.dim {
-  opacity: 0.18;
-}
-.valve-shut circle {
-  fill: var(--c-blocked);
-  stroke: var(--bg);
   stroke-width: 2;
-  animation: pulse 1s ease-in-out infinite;
+  animation: lights 0.9s linear infinite;
 }
-.valve-shut path {
-  stroke: var(--bg);
-  stroke-width: 2.4;
-  stroke-linecap: round;
+.centreline.s-tool {
+  animation-duration: 0.55s;
+}
+.centreline.s-waiting {
+  stroke: var(--c);
+}
+.centreline.s-blocked {
+  stroke: var(--c);
+  stroke-dasharray: none;
+  animation: breathe 1.2s ease-in-out infinite;
+}
+.centreline.s-done,
+.centreline.s-unknown {
+  stroke: var(--line-2);
+  stroke-dasharray: 4 9;
+}
+.centreline.s-ended {
+  stroke: var(--line);
+  stroke-dasharray: 2 10;
+}
+.edge.s-ended,
+.tarmac.s-ended {
+  opacity: 0.55;
+}
+.edge.dim,
+.tarmac.dim,
+.centreline.dim {
+  opacity: 0.18;
 }
 
-@keyframes flow {
-  to {
-    stroke-dashoffset: -24;
-  }
+.holdline line {
+  stroke: var(--c-waiting);
+  stroke-width: 1.4;
 }
-@keyframes breathe {
-  50% {
-    opacity: 0.55;
-  }
+.holdline .dashed {
+  stroke-dasharray: 2 1.8;
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.45;
-  }
+.stopbar circle {
+  fill: var(--c-blocked);
+  animation: blink 0.8s ease-in-out infinite;
 }
-@keyframes ring {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--c) 50%, transparent);
-  }
-  100% {
-    box-shadow: 0 0 0 8px transparent;
-  }
+.holdline.dim,
+.stopbar.dim {
+  opacity: 0.2;
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+
+.plane path {
+  fill: var(--c);
+  stroke: var(--canvas);
+  stroke-width: 1.2;
+  paint-order: stroke;
 }
-@keyframes stripes {
-  to {
-    background-position: 12px 0;
-  }
+.plane.s-thinking path,
+.plane.s-tool path {
+  filter: drop-shadow(0 0 3px color-mix(in oklab, var(--c) 70%, transparent));
+}
+.plane.parked path {
+  fill: var(--c);
+}
+.plane.parked.s-blocked path {
+  animation: blink 1s ease-in-out infinite;
+}
+.plane.dim {
+  opacity: 0.2;
 }
 
 /* ---------- cards ---------- */
@@ -538,8 +590,7 @@ code,
   text-align: left;
   border-radius: var(--r-lg);
   border: 1px solid var(--line);
-  background: var(--card);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 5%, transparent);
+  background: var(--surface);
   cursor: pointer;
   min-width: 0;
   transition:
@@ -552,33 +603,16 @@ code,
   .card:hover {
     border-color: var(--line-2);
     transform: translateY(-2px);
-    box-shadow:
-      inset 0 1px 0 color-mix(in oklab, #fff 5%, transparent),
-      0 8px 24px color-mix(in oklab, #000 10%, transparent);
+    box-shadow: 0 8px 24px color-mix(in oklab, #000 10%, transparent);
     transition-duration: var(--m-in), var(--m-in), var(--m-in), 180ms;
   }
 }
 .card.selected {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 1px var(--ink);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 .card.dim {
   opacity: 0.25;
-}
-.card .port {
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 22px;
-  margin-top: -11px;
-  border-radius: 2px;
-  background: var(--wall-hi);
-}
-.card .port.in {
-  left: -5px;
-}
-.card .port.out {
-  right: -5px;
 }
 .card-top {
   display: flex;
@@ -588,7 +622,7 @@ code,
 }
 .title {
   font-size: var(--t-title);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -611,32 +645,28 @@ code,
   font-size: var(--t-label);
   font-weight: 500;
   padding: 1px 8px;
-  border-radius: var(--r-sm);
+  border-radius: 999px;
   color: var(--c);
   background: color-mix(in oklab, var(--c) 13%, transparent);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.badge.plain {
-  color: var(--text-2);
-  background: var(--bg);
-  border: 1px solid var(--line);
+.badge b {
+  font-weight: 600;
 }
 
-.card.source {
-  padding: 12px 14px;
-}
 .card.via {
-  padding: 10px 12px;
-  background: var(--panel);
+  background: var(--surface-2);
 }
 .card.via .title {
   font-family: var(--font-mono);
   font-size: 14px;
+  font-weight: 500;
 }
 .gauge {
   display: flex;
   gap: 2px;
-  height: 4px;
+  height: 3px;
   margin-top: auto;
   border-radius: 2px;
   overflow: hidden;
@@ -649,63 +679,78 @@ code,
 
 .card.agent,
 .card.subagent {
-  border-left: 3px solid var(--c);
+  box-shadow: inset 2px 0 0 var(--c);
 }
 .card.agent.s-blocked {
-  border-color: var(--c);
-  animation: ring 1.4s ease-out infinite;
+  border-color: color-mix(in oklab, var(--c) 60%, var(--line));
 }
 .card.agent.s-waiting {
-  border-color: color-mix(in oklab, var(--c) 45%, var(--line));
-  border-left-color: var(--c);
+  border-color: color-mix(in oklab, var(--c) 35%, var(--line));
 }
 .card.agent.s-ended,
 .card.subagent.s-done,
 .card.subagent.s-ended {
-  opacity: 0.62;
+  opacity: 0.6;
 }
 .card.subagent {
   padding: 10px 12px;
   gap: 3px;
-  background: var(--panel);
+  background: var(--surface-2);
 }
 .card.subagent .title {
   font-size: 14px;
+  font-weight: 500;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card.agent:hover,
+  .card.subagent:hover {
+    box-shadow:
+      inset 2px 0 0 var(--c),
+      0 8px 24px color-mix(in oklab, #000 10%, transparent);
+  }
+}
+.card.agent.selected,
+.card.subagent.selected {
+  box-shadow:
+    inset 2px 0 0 var(--c),
+    0 0 0 1px var(--accent);
 }
 
-.valve {
+/* Each agent card carries its plane, tinted by state. */
+.status-plane {
   position: relative;
-  width: 16px;
-  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--c);
+}
+.status-plane svg {
+  fill: currentColor;
+}
+.status-plane::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
   border-radius: 50%;
   border: 2px solid var(--c);
+  opacity: 0;
+}
+.s-blocked > .card-top .status-plane::after {
+  animation: ping 1s ease-out infinite;
+}
+.s-done > .card-top .status-plane,
+.s-ended > .card-top .status-plane,
+.s-unknown > .card-top .status-plane {
+  opacity: 0.6;
+}
+.flight {
   flex: none;
-}
-.valve-core {
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--c);
-  opacity: 0.35;
-}
-.s-thinking > .card-top .valve,
-.s-tool > .card-top .valve {
-  border-style: dashed;
-  animation: spin 2.4s linear infinite;
-}
-.s-tool > .card-top .valve {
-  animation-duration: 1.2s;
-}
-.s-thinking > .card-top .valve-core,
-.s-tool > .card-top .valve-core {
-  opacity: 0.85;
-}
-.s-blocked > .card-top .valve-core {
-  opacity: 1;
-  animation: pulse 0.9s ease-in-out infinite;
-}
-.s-waiting > .card-top .valve-core {
-  opacity: 0.9;
+  font-family: var(--font-mono);
+  font-size: var(--t-label);
+  font-weight: 600;
+  color: var(--text-2);
 }
 
 .activity {
@@ -733,11 +778,13 @@ code,
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  font-family: var(--font-mono);
 }
 .tool-time {
   margin-left: auto;
   color: var(--muted);
   flex: none;
+  font-family: var(--font-mono);
 }
 
 .mini-tl {
@@ -756,7 +803,7 @@ code,
 }
 .mini-tl .seg.s-waiting,
 .tl-lane .seg.s-waiting {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 .mini-tl .seg.s-done,
 .tl-lane .seg.s-done {
@@ -772,6 +819,20 @@ code,
   background-size: 12px 100%;
   background-color: var(--c);
   animation: stripes 0.8s linear infinite;
+}
+
+/* machine roots (multi-host) */
+.card.host.h-connecting .meta {
+  color: var(--c-waiting);
+}
+.card.host.h-error {
+  border-color: color-mix(in oklab, var(--c-blocked) 55%, var(--line));
+}
+.card.host.h-error .meta {
+  color: var(--c-blocked);
+  white-space: normal;
+  line-height: 1.3;
+  max-height: 2.6em;
 }
 
 .legend {
@@ -795,14 +856,12 @@ code,
   align-items: center;
   gap: 8px;
 }
-.legend svg .casing {
-  stroke-width: 10;
+.legend-plane {
+  fill: var(--c);
 }
-.legend svg .fluid {
-  stroke-width: 5;
-}
-.legend svg .flow {
-  stroke-width: 4;
+.legend-item b {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .empty {
@@ -857,17 +916,17 @@ code,
 .tl-axis .tl-lane-col {
   position: relative;
   height: 18px;
-  margin-right: 162px;
+  margin-right: 202px;
 }
 .tick {
   position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 .tick.now {
   transform: translateX(-100%);
   color: var(--ink);
-  font-weight: 500;
 }
 .tl-group h3 {
   display: flex;
@@ -924,7 +983,7 @@ code,
   display: inline-block;
 }
 .dot.s-blocked {
-  animation: pulse 1s ease-in-out infinite;
+  animation: blink 1s ease-in-out infinite;
 }
 .tl-name {
   overflow: hidden;
@@ -942,6 +1001,7 @@ code,
   color: var(--muted);
   font-size: var(--t-label);
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 .tl-row .tl-lane-col {
   display: flex;
@@ -952,14 +1012,13 @@ code,
 .tl-lane {
   position: relative;
   flex: 1;
-  height: 14px;
-  border-radius: 7px;
+  height: 10px;
+  border-radius: 5px;
   background: var(--empty);
-  box-shadow: inset 0 0 0 3px var(--wall);
   overflow: hidden;
 }
 .tl-row.sub .tl-lane {
-  height: 10px;
+  height: 6px;
 }
 .tl-lane .grid {
   position: absolute;
@@ -969,11 +1028,12 @@ code,
   background: var(--line);
 }
 .tl-stats {
-  width: 150px;
+  width: 190px;
   flex: none;
   color: var(--muted);
   font-size: var(--t-label);
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 
 /* ---------- detail panel ---------- */
@@ -981,7 +1041,7 @@ code,
   position: relative;
   overflow: auto;
   border-left: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--surface);
   padding: 20px 20px 48px;
 }
 .panel-close {
@@ -1035,8 +1095,8 @@ code,
 .panel h3 {
   margin: 24px 0 8px;
   font-size: var(--t-label);
-  font-weight: 500;
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--text-2);
 }
 .panel section > p {
   margin: 0 0 8px;
@@ -1053,6 +1113,7 @@ code,
   font-family: var(--font-mono);
   font-size: var(--t-label);
   color: var(--text-2);
+  overflow-wrap: anywhere;
 }
 .tl-caption {
   display: flex;
@@ -1100,6 +1161,7 @@ code,
 .tools .t-time,
 .tools .t-dur {
   color: var(--muted);
+  font-family: var(--font-mono);
 }
 .tools .t-name {
   font-family: var(--font-mono);
@@ -1134,7 +1196,7 @@ code,
   top: 26px;
   bottom: 2px;
   width: 2px;
-  background: var(--wall);
+  background: var(--line-2);
 }
 .chain li:last-child::before {
   display: none;
@@ -1238,20 +1300,6 @@ pre.code .hit {
     margin-left: 0;
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0s !important;
-    animation-iteration-count: 1 !important;
-  }
-  .card:hover,
-  .chip:hover {
-    transform: none !important;
-  }
-}
-
 @media (max-width: 640px) {
   .legend,
   .zoom {
@@ -1264,34 +1312,16 @@ pre.code .hit {
     padding: 0 10px;
   }
 }
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-fieldset.chips {
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
 
-/* machine roots (multi-host) */
-.card.host {
-  border-style: solid;
-}
-.card.host.h-connecting .meta {
-  color: var(--c-waiting);
-}
-.card.host.h-error {
-  border-color: color-mix(in oklab, var(--c-blocked) 55%, var(--line));
-}
-.card.host.h-error .meta {
-  color: var(--c-blocked);
-  white-space: normal;
-  line-height: 1.3;
-  max-height: 2.6em;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+  .card:hover,
+  .chip:hover {
+    transform: none !important;
+  }
 }

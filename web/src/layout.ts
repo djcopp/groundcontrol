@@ -7,6 +7,7 @@ import {
   procKey,
   type Snapshot,
 } from "../../src/shared/types.js";
+import { flightNumber } from "./format.js";
 
 export type NodeType = "source" | "via" | "agent" | "subagent";
 
@@ -32,6 +33,8 @@ export interface LNode {
   counts: Partial<Record<AgentState, number>>;
   /** Oldest start time below this node, for stable ordering. */
   order: number;
+  /** Agents only: a flight number made from the launcher and pid, e.g. VSC482. */
+  flight?: string;
 }
 
 export interface Pipe {
@@ -44,6 +47,8 @@ export interface Pipe {
   y0: number;
   x1: number;
   y1: number;
+  /** Route length in px, so planes can fly every route at the same speed. */
+  length: number;
 }
 
 export interface Layout {
@@ -55,7 +60,7 @@ export interface Layout {
 
 export const SIZES: Record<NodeType, { w: number; h: number }> = {
   source: { w: 210, h: 90 },
-  via: { w: 236, h: 70 },
+  via: { w: 236, h: 80 },
   agent: { w: 336, h: 118 },
   subagent: { w: 272, h: 80 },
 };
@@ -334,11 +339,39 @@ export function buildLayout(snap: Snapshot, opts: LayoutOptions = {}): Layout {
         y0,
         x1,
         y1,
+        length: Math.abs(x1 - x0) + Math.abs(y1 - y0),
       });
     }
   }
   pipes.sort((a, b) => priority(a.state) - priority(b.state));
+  assignFlightNumbers(nodes);
   return { nodes, pipes, width, height };
+}
+
+/**
+ * Top-level agents take their prefix from the outermost launcher ("airport") above them, skipping
+ * machine roots; escorts (subagents) take their parent's number plus a letter.
+ */
+function assignFlightNumbers(nodes: LNode[]) {
+  for (const n of nodes) {
+    if (!n.agent || n.parent?.agent) continue;
+    let airport: LNode | undefined = n.parent;
+    while (airport?.parent && airport.parent.kind !== "host") airport = airport.parent;
+    n.flight = flightNumber(
+      n.agent.pid,
+      airport && airport.kind !== "host" ? airport.label : "Background",
+    );
+  }
+  const letter = (k: number) => String.fromCharCode(65 + (k % 26));
+  const walk = (n: LNode) => {
+    const escorts = n.children.filter((c) => c.agent);
+    escorts.forEach((c, k) => {
+      if (n.flight) c.flight = `${n.flight}-${letter(k)}`;
+      walk(c);
+    });
+    for (const c of n.children) if (!c.agent) walk(c);
+  };
+  for (const n of nodes) if (!n.parent) walk(n);
 }
 
 /** Orthogonal pipe with rounded elbows; bends close to the parent so siblings share a manifold. */
@@ -346,7 +379,7 @@ export function pipePath(x0: number, y0: number, x1: number, y1: number): string
   const dy = y1 - y0;
   if (Math.abs(dy) < 0.5) return `M${x0},${y0} H${x1}`;
   const bx = Math.min(x0 + BEND, (x0 + x1) / 2);
-  const r = Math.min(16, Math.abs(dy) / 2, bx - x0);
+  const r = Math.min(22, Math.abs(dy) / 2, bx - x0);
   const s = Math.sign(dy);
   return [
     `M${x0},${y0}`,

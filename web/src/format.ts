@@ -30,25 +30,62 @@ export function clock(ms: number): string {
   return new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+/** Aviation term first, plain meaning second, so the theme never hides what is going on. */
 export const STATE_LABEL: Record<AgentState, string> = {
-  thinking: "Thinking",
-  tool: "Running tool",
-  blocked: "Needs permission",
-  waiting: "Waiting for you",
-  done: "Done",
-  ended: "Exited",
-  unknown: "Unknown",
+  thinking: "In flight, thinking",
+  tool: "Taxiing, running a tool",
+  blocked: "Awaiting clearance, needs your permission",
+  waiting: "Holding, waiting for you",
+  done: "Landed, handed back to its caller",
+  ended: "Landed, process exited",
+  unknown: "No signal",
 };
 
 export const STATE_SHORT: Record<AgentState, string> = {
-  thinking: "thinking",
-  tool: "tool",
-  blocked: "blocked",
-  waiting: "waiting",
-  done: "done",
-  ended: "exited",
-  unknown: "?",
+  thinking: "in flight",
+  tool: "taxiing",
+  blocked: "clearance",
+  waiting: "holding",
+  done: "landed",
+  ended: "landed",
+  unknown: "no signal",
 };
+
+/** "ended" and "done" are both landed: one chip, one highlight. */
+export const sameStatus = (a: AgentState, b: AgentState) =>
+  a === b || (a === "ended" && b === "done") || (a === "done" && b === "ended");
+
+const CALL_PREFIX: Record<string, string> = {
+  Terminal: "TRM",
+  iTerm2: "ITM",
+  Ghostty: "GST",
+  WezTerm: "WEZ",
+  Alacritty: "ALC",
+  Warp: "WRP",
+  "VS Code": "VSC",
+  Cursor: "CSR",
+  Windsurf: "WSF",
+  Zed: "ZED",
+  JetBrains: "JBR",
+  "Claude Desktop": "CLD",
+  tmux: "TMX",
+  SSH: "SSH",
+  Background: "BGD",
+};
+
+/** A flight number from the airport (launcher) and the pid: VS Code + pid 52482 -> VSC482. */
+export function flightNumber(pid: number | undefined, launcher: string): string {
+  const prefix =
+    CALL_PREFIX[launcher] ??
+    (launcher
+      .replace(/\.[a-z]+$/i, "")
+      .replace(/[^a-z]/gi, "")
+      .slice(0, 3)
+      .toUpperCase()
+      .padEnd(3, "X") ||
+      "AGT");
+  return `${prefix}${pid ? String(pid % 1000).padStart(3, "0") : ""}`;
+}
 
 export function shortModel(model: string | undefined): string | undefined {
   if (!model) return undefined;

@@ -1,11 +1,11 @@
 {
-  "name": "agent-visualiser",
+  "name": "groundcontrol",
   "version": "0.1.0",
-  "description": "Watch your Claude Code agents flow through pipes: live view of every running claude process, where it was launched from, and whether it is working, running a tool, or waiting on you.",
+  "description": "Air traffic control for your Claude Code agents: every running claude process as a flight on a taxiway from the app or script that launched it, showing who's working, holding for you, or awaiting clearance.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "agent-visualiser": "dist/server/cli.js"
+    "groundcontrol": "dist/server/cli.js"
   },
   "files": [
     "dist",
@@ -19,9 +19,9 @@
     "claude",
     "claude-code",
     "agents",
-    "visualiser",
     "monitoring",
-    "observability"
+    "observability",
+    "dashboard"
   ],
   "scripts": {
     "dev": "concurrently -k -n server,web -c cyan,magenta \"tsx watch src/cli.ts --no-open --port 4317\" \"vite\"",
@@ -37,8 +37,8 @@
   "packageManager": "pnpm@10.20.0",
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",
-    "@fontsource-variable/geist": "^5.3.0",
-    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/reddit-sans": "^5.3.0",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

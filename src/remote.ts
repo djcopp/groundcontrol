@@ -12,7 +12,7 @@ import {
 } from "./shared/types.js";
 
 /**
- * Remote machines are watched over a plain SSH session: we run `agent-visualiser --stream` on the
+ * Remote machines are watched over a plain SSH session: we run `groundcontrol --stream` on the
  * host and read newline-delimited JSON from its stdout. Nothing listens on a port on either side,
  * and SSH auth, jump hosts and aliases all come from the user's own ~/.ssh/config.
  *
@@ -297,7 +297,7 @@ export function runStream(source: Source, intervalMs: number): void {
     try {
       out({ type: "snapshot", data: await source.snapshot() });
     } catch (err) {
-      process.stderr.write(`agent-visualiser: ${String(err)}\n`);
+      process.stderr.write(`groundcontrol: ${String(err)}\n`);
     } finally {
       busy = false;
     }

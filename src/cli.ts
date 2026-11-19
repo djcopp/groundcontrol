@@ -23,11 +23,11 @@ function version(): string {
 }
 
 // Deliberately not `npx -y ...`: that would download and run whatever is published under the name.
-const DEFAULT_REMOTE_CMD = "agent-visualiser --stream";
+const DEFAULT_REMOTE_CMD = "groundcontrol --stream";
 
-const HELP = `agent-visualiser: watch your Claude Code agents flow.
+const HELP = `groundcontrol: air traffic control for your Claude Code agents.
 
-Usage: agent-visualiser [options]
+Usage: groundcontrol [options]
 
 Options:
   -p, --port <n>        Port to serve on (default 4317, 0 = any free port)
@@ -146,7 +146,7 @@ async function main() {
     webRoot: existsSync(webRoot) ? webRoot : undefined,
   });
   process.stdout.write(
-    `agent-visualiser ${version()} ${values.demo ? "(demo) " : ""}running at ${url}\n` +
+    `groundcontrol ${version()} ${values.demo ? "(demo) " : ""}running at ${url}\n` +
       (existsSync(webRoot)
         ? ""
         : "UI not built: run `pnpm build`, or use `pnpm dev` for the Vite UI.\n"),
@@ -163,6 +163,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(`agent-visualiser: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(`groundcontrol: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);
 });

@@ -121,32 +121,46 @@ export function AppIcon({
   );
 }
 
+/** Top-down airliner, nose pointing right (+x), centred on 0,0, about 20 units long. */
+export const PLANE_PATH =
+  "M10,0 C10,-1 8.6,-1.5 7,-1.5 L2.5,-1.5 L-2.5,-8.5 L-5,-8.5 L-2,-1.5 L-6.5,-1.5 L-8.5,-4.5 L-10.2,-4.5 L-9,0 L-10.2,4.5 L-8.5,4.5 L-6.5,1.5 L-2,1.5 L-5,8.5 L-2.5,8.5 L2.5,1.5 L7,1.5 C8.6,1.5 10,1 10,0 Z";
+
+export function PlaneIcon({ size = 16, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="-11 -11 22 22"
+      aria-hidden="true"
+    >
+      <path d={PLANE_PATH} />
+    </svg>
+  );
+}
+
 export function Logo() {
   return (
     <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true" className="logo">
-      <path
-        d="M4 10h10a6 6 0 016 6v12"
-        fill="none"
-        stroke="var(--wall)"
-        strokeWidth="7"
-        strokeLinecap="round"
+      <rect
+        x="2"
+        y="12"
+        width="28"
+        height="8"
+        rx="2"
+        fill="var(--tarmac)"
+        stroke="var(--tarmac-edge)"
       />
       <path
-        d="M4 10h10a6 6 0 016 6v12"
-        fill="none"
+        d="M5 16h22"
         stroke="var(--c-thinking)"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        className="logo-flow"
+        strokeWidth="1.4"
+        strokeDasharray="2.5 2.5"
+        className="logo-lights"
       />
-      <path d="M20 4v6" fill="none" stroke="var(--wall)" strokeWidth="7" strokeLinecap="round" />
-      <path
-        d="M20 4v6"
-        fill="none"
-        stroke="var(--c-tool)"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-      />
+      <g transform="translate(17 9) rotate(-18) scale(0.62)">
+        <path d={PLANE_PATH} fill="var(--ink)" />
+      </g>
     </svg>
   );
 }

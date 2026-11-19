@@ -1,19 +1,25 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { AgentState, Snapshot } from "../../src/shared/types.js";
 import {
   duration,
   homeRelative,
   STATE_LABEL,
   STATE_SHORT,
+  sameStatus,
   shortDuration,
   shortModel,
   toolName,
 } from "./format.js";
-import { AppIcon } from "./icons.js";
+import { AppIcon, PLANE_PATH, PlaneIcon } from "./icons.js";
 import { buildLayout, type LNode, type Pipe } from "./layout.js";
 import { MiniTimeline } from "./MiniTimeline.js";
 
-const FLOWING: ReadonlySet<AgentState> = new Set(["thinking", "tool"]);
+/** Planes taxi along routes whose agent is working. */
+const MOVING: ReadonlySet<AgentState> = new Set(["thinking", "tool"]);
+/** Planes park at the end of the route, nose to the card, when the agent needs you. */
+const PARKED: ReadonlySet<AgentState> = new Set(["waiting", "blocked"]);
+/** px per second: thinking cruises, tool calls move briskly. */
+const SPEED: Partial<Record<AgentState, number>> = { thinking: 70, tool: 120 };
 const COUNT_ORDER: AgentState[] = [
   "blocked",
   "waiting",
@@ -23,6 +29,8 @@ const COUNT_ORDER: AgentState[] = [
   "done",
   "ended",
 ];
+/** Distance from the card at which a plane holds short. */
+const HOLD = 26;
 
 export interface PipeViewProps {
   snapshot: Snapshot;
@@ -31,6 +39,7 @@ export interface PipeViewProps {
   focus?: AgentState;
   hideFinished: boolean;
   zoom: number;
+  paused: boolean;
 }
 
 export function PipeView({
@@ -40,77 +49,144 @@ export function PipeView({
   focus,
   hideFinished,
   zoom,
+  paused,
 }: PipeViewProps) {
   const layout = useMemo(() => buildLayout(snapshot, { hideFinished }), [snapshot, hideFinished]);
   const now = snapshot.generatedAt;
-  const nodeDim = (n: LNode) =>
-    focus ? (n.agent ? n.agent.state !== focus : !n.counts[focus]) : false;
+  const nodeDim = (n: LNode) => {
+    if (!focus) return false;
+    if (n.agent) return !sameStatus(n.agent.state, focus);
+    return !Object.entries(n.counts).some(([s, c]) => c && sameStatus(s as AgentState, focus));
+  };
   const dimmed = (x: LNode | Pipe) => nodeDim("to" in x ? x.to : x);
+
+  // SMIL plane motion ignores CSS animation-play-state, so pause it through the SVG API.
+  const svg = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    const el = svg.current;
+    if (!el) return;
+    const still = paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still) el.pauseAnimations();
+    else el.unpauseAnimations();
+  });
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: clicking empty canvas deselects; Escape does the same from the keyboard
     // biome-ignore lint/a11y/useKeyWithClickEvents: see above
     <div className="canvas-scroll" onClick={() => onSelect(undefined)}>
-      <div
-        className="canvas"
-        style={{
-          width: layout.width * zoom,
-          height: layout.height * zoom,
-        }}
-      >
+      <div className="canvas" style={{ width: layout.width * zoom, height: layout.height * zoom }}>
         <div
           className="canvas-inner"
           style={{ width: layout.width, height: layout.height, transform: `scale(${zoom})` }}
         >
-          <svg className="pipes" width={layout.width} height={layout.height} aria-hidden="true">
+          <svg
+            ref={svg}
+            className="pipes"
+            width={layout.width}
+            height={layout.height}
+            aria-hidden="true"
+          >
             <defs>
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3.5" result="b" />
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="2" result="b" />
                 <feMerge>
                   <feMergeNode in="b" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
             </defs>
-            {/* Three passes so overlapping pipes merge into one manifold. */}
-            <g className="layer-casing">
+            {/* Taxiways in passes, so shared stretches merge into one strip of tarmac. */}
+            <g className="layer-edge">
               {layout.pipes.map((p) => (
                 <path
                   key={p.id}
                   d={p.d}
-                  className={`casing s-${p.state}${dimmed(p) ? " dim" : ""}`}
+                  className={`edge s-${p.state}${dimmed(p) ? " dim" : ""}`}
                 />
               ))}
             </g>
-            <g className="layer-fluid">
+            <g className="layer-tarmac">
               {layout.pipes.map((p) => (
                 <path
                   key={p.id}
                   d={p.d}
-                  className={`fluid s-${p.state}${dimmed(p) ? " dim" : ""}`}
+                  className={`tarmac s-${p.state}${dimmed(p) ? " dim" : ""}`}
                 />
               ))}
             </g>
-            <g className="layer-flow">
+            <g className="layer-centreline">
+              {layout.pipes.map((p) => (
+                <path
+                  key={p.id}
+                  d={p.d}
+                  className={`centreline s-${p.state}${dimmed(p) ? " dim" : ""}`}
+                  filter={MOVING.has(p.state) && !dimmed(p) ? "url(#glow)" : undefined}
+                />
+              ))}
+            </g>
+            <g className="layer-markings">
               {layout.pipes
-                .filter((p) => FLOWING.has(p.state) && !dimmed(p))
-                .map((p) => (
-                  <path key={p.id} d={p.d} className={`flow s-${p.state}`} filter="url(#glow)" />
-                ))}
-            </g>
-            <g className="layer-joints">
-              {layout.pipes.map((p) => (
-                <g key={p.id} className={`joint s-${p.state}${dimmed(p) ? " dim" : ""}`}>
-                  <rect x={p.x0 - 1} y={p.y0 - 9} width={7} height={18} rx={2} />
-                  <rect x={p.x1 - 6} y={p.y1 - 9} width={7} height={18} rx={2} />
-                  {p.state === "blocked" && (
-                    <g className="valve-shut" transform={`translate(${p.x1 - 22}, ${p.y1})`}>
-                      <circle r={8} />
-                      <path d="M-4.5,-4.5 L4.5,4.5" />
+                .filter((p) => PARKED.has(p.state))
+                .map((p) => {
+                  const x = p.x1 - HOLD + 12;
+                  return p.state === "blocked" ? (
+                    // Stop bar: a row of red lights across the taxiway.
+                    <g key={p.id} className={`stopbar${dimmed(p) ? " dim" : ""}`}>
+                      {[-4.5, -1.5, 1.5, 4.5].map((dy) => (
+                        <circle key={dy} cx={x} cy={p.y1 + dy} r={1.3} />
+                      ))}
                     </g>
-                  )}
-                </g>
-              ))}
+                  ) : (
+                    // Holding position marking: two solid and two dashed amber lines.
+                    <g key={p.id} className={`holdline${dimmed(p) ? " dim" : ""}`}>
+                      <line x1={x} y1={p.y1 - 5.5} x2={x} y2={p.y1 + 5.5} />
+                      <line x1={x + 2.5} y1={p.y1 - 5.5} x2={x + 2.5} y2={p.y1 + 5.5} />
+                      <line
+                        className="dashed"
+                        x1={x + 5.5}
+                        y1={p.y1 - 5.5}
+                        x2={x + 5.5}
+                        y2={p.y1 + 5.5}
+                      />
+                      <line
+                        className="dashed"
+                        x1={x + 8}
+                        y1={p.y1 - 5.5}
+                        x2={x + 8}
+                        y2={p.y1 + 5.5}
+                      />
+                    </g>
+                  );
+                })}
+            </g>
+            <g className="layer-planes">
+              {layout.pipes
+                .filter((p) => MOVING.has(p.state) && !dimmed(p))
+                .map((p) => {
+                  const dur = Math.max(1.6, p.length / (SPEED[p.state] ?? 90));
+                  return (
+                    <g key={p.id} className={`plane s-${p.state}`}>
+                      <path d={PLANE_PATH} transform="scale(0.8)" />
+                      <animateMotion
+                        dur={`${dur.toFixed(2)}s`}
+                        repeatCount="indefinite"
+                        rotate="auto"
+                        path={p.d}
+                      />
+                    </g>
+                  );
+                })}
+              {layout.pipes
+                .filter((p) => PARKED.has(p.state))
+                .map((p) => (
+                  <g
+                    key={p.id}
+                    className={`plane parked s-${p.state}${dimmed(p) ? " dim" : ""}`}
+                    transform={`translate(${p.x1 - HOLD - 4}, ${p.y1})`}
+                  >
+                    <path d={PLANE_PATH} transform="scale(0.8)" />
+                  </g>
+                ))}
             </g>
           </svg>
           {layout.nodes.map((n) => (
@@ -166,9 +242,9 @@ function NodeCard({
         </>
       );
     } else if (a.state === "waiting") {
-      activity = <span className="muted">Turn finished, waiting for input</span>;
+      activity = <span className="muted">Turn finished, waiting for you</span>;
     } else if (a.state === "thinking") {
-      activity = <span className="muted">Generating…</span>;
+      activity = <span className="muted">Thinking…</span>;
     } else if (a.state === "ended") {
       activity = <span className="muted">Process exited</span>;
     } else if (a.state === "done") {
@@ -190,14 +266,13 @@ function NodeCard({
         className={`${cls} s-${a.state}`}
         style={style}
         onClick={click}
-        title={`${a.name}\n${STATE_LABEL[a.state]} for ${duration(since)}\n${homeRelative(a.cwd) ?? ""}`}
+        title={`${node.flight ?? ""} ${a.name}\n${STATE_LABEL[a.state]} for ${duration(since)}\n${homeRelative(a.cwd) ?? ""}`}
       >
-        <span className="port in" />
-        {node.children.length > 0 && <span className="port out" />}
         <div className="card-top">
-          <span className="valve" aria-hidden="true">
-            <span className="valve-core" />
+          <span className="status-plane">
+            <PlaneIcon size={16} />
           </span>
+          {node.flight && <span className="flight">{node.flight}</span>}
           <span className="title">{a.name}</span>
           <span className="badge">
             {STATE_SHORT[a.state]} <b>{shortDuration(since)}</b>
@@ -213,10 +288,10 @@ function NodeCard({
   }
 
   const total = Object.values(node.counts).reduce((s, v) => s + (v ?? 0), 0);
-  const agentsText = `${total} agent${total === 1 ? "" : "s"}`;
+  const flightsText = `${total} flight${total === 1 ? "" : "s"}`;
   const hostText = node.host
     ? node.host.status === "live"
-      ? `${node.host.local ? "this machine" : "ssh"} · ${agentsText}`
+      ? `${node.host.local ? "this machine" : "ssh"} · ${flightsText}`
       : node.host.status === "connecting"
         ? "connecting…"
         : (node.host.message ?? "disconnected")
@@ -225,7 +300,7 @@ function NodeCard({
     ? hostText
     : node.proc?.kind === "script"
       ? (homeRelative(node.proc.script) ?? homeRelative(node.proc.cwd) ?? node.proc.command)
-      : agentsText;
+      : flightsText;
   return (
     <button
       type="button"
@@ -234,8 +309,6 @@ function NodeCard({
       onClick={click}
       title={node.proc?.command}
     >
-      {node.type === "via" && <span className="port in" />}
-      <span className="port out" />
       <div className="card-top">
         <AppIcon
           kind={node.host?.local ? "host-local" : node.kind}

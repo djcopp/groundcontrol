@@ -11,6 +11,7 @@ import {
   toolName,
 } from "./format.js";
 import { AppIcon, Glyph } from "./icons.js";
+import { buildLayout } from "./layout.js";
 import { MiniTimeline } from "./MiniTimeline.js";
 
 function useTrace(agentId: string | undefined) {
@@ -105,13 +106,17 @@ function Code({ trace, onlyPid }: { trace?: TraceResponse; onlyPid?: number }) {
 }
 
 function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) {
+  const flight = buildLayout(snapshot).nodes.find((n) => n.agent?.id === agent.id)?.flight;
   const { trace, error } = useTrace(agent.kind === "agent" ? agent.id : agent.parentAgentId);
   const now = snapshot.generatedAt;
   const subagents = snapshot.agents.filter((a) => a.parentAgentId === agent.id);
   return (
     <>
       <header className={`panel-head s-${agent.state}`}>
-        <div className="panel-kicker">{agent.kind === "subagent" ? "Subagent" : "Agent"}</div>
+        <div className="panel-kicker">
+          {flight && <b className="flight">{flight}</b>}
+          {agent.kind === "subagent" ? " escort (subagent)" : " flight"}
+        </div>
         <h2>{agent.name}</h2>
         <div className="panel-state">
           <span className={`dot s-${agent.state}`} />
@@ -182,7 +187,7 @@ function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) 
       )}
 
       <section>
-        <h3>Recent tool calls</h3>
+        <h3>Flight log</h3>
         {agent.recentTools.length === 0 ? (
           <p className="muted">None in the transcript window.</p>
         ) : (
@@ -204,8 +209,8 @@ function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) 
       </section>
 
       <section>
-        <h3>Launch chain</h3>
-        <p className="muted small">Where this agent was started from, outermost first.</p>
+        <h3>Flight plan</h3>
+        <p className="muted small">Where this agent took off from, outermost first.</p>
         {error && <p className="err">{error}</p>}
         {trace ? (
           <Chain chain={trace.chain} highlightPid={agent.pid} />
@@ -249,7 +254,7 @@ function ProcessDetail({ proc, snapshot }: { proc: ProcessNode; snapshot: Snapsh
         <Row k="CPU / RAM" v={`${proc.cpu.toFixed(1)}% · ${proc.rssMb} MB`} />
       </section>
       <section>
-        <h3>Agents downstream ({agents.length})</h3>
+        <h3>Flights from here ({agents.length})</h3>
         <ul className="subs">
           {agents.map((a) => (
             <li key={a.id}>
@@ -269,7 +274,7 @@ function ProcessDetail({ proc, snapshot }: { proc: ProcessNode; snapshot: Snapsh
       )}
       {chain && chain.length > 1 && (
         <section>
-          <h3>Launched from</h3>
+          <h3>Flight plan</h3>
           <Chain chain={chain} highlightPid={proc.pid} />
         </section>
       )}

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Agent, AgentState, ProcessNode, Snapshot } from "../../src/shared/types.js";
-import { clock, duration, STATE_LABEL, STATE_SHORT, shortDuration } from "./format.js";
+import { clock, duration, STATE_LABEL, STATE_SHORT, sameStatus, shortDuration } from "./format.js";
 import { AppIcon } from "./icons.js";
 import { visibleChain } from "./layout.js";
 
@@ -111,7 +111,7 @@ export function TimelineView({
             const waitMs = a.timeline
               .filter((s) => s.state === "waiting" || s.state === "blocked")
               .reduce((s, x) => s + (x.end - x.start), 0);
-            const dim = focus && a.state !== focus;
+            const dim = focus && !sameStatus(a.state, focus);
             return (
               <button
                 type="button"

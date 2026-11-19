@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentState, Snapshot } from "../../src/shared/types.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { STATE_LABEL } from "./format.js";
-import { Glyph, Logo } from "./icons.js";
+import { Glyph, Logo, PlaneIcon } from "./icons.js";
 import { PipeView } from "./PipeView.js";
 import { TimelineView } from "./TimelineView.js";
 import { useSnapshot } from "./useSnapshot.js";
@@ -10,17 +10,17 @@ import { useSnapshot } from "./useSnapshot.js";
 type View = "pipes" | "timeline";
 
 const CHIPS: { state: AgentState; label: string; hint: string }[] = [
-  { state: "thinking", label: "thinking", hint: "The model is generating" },
-  { state: "tool", label: "on tools", hint: "A tool call is running" },
-  { state: "blocked", label: "blocked", hint: "Stuck on a permission prompt" },
-  { state: "waiting", label: "waiting", hint: "Turn finished, waiting for you" },
-  { state: "done", label: "done", hint: "Subagents that handed back" },
+  { state: "blocked", label: "awaiting clearance", hint: "Stuck on a permission prompt" },
+  { state: "waiting", label: "holding", hint: "Turn finished, waiting for you" },
+  { state: "thinking", label: "in flight", hint: "The model is thinking" },
+  { state: "tool", label: "taxiing", hint: "A tool call is running" },
+  { state: "done", label: "landed", hint: "Finished subagents and exited agents" },
 ];
 
 function usePersisted<T>(key: string, initial: T): [T, (v: T) => void] {
   const [v, setV] = useState<T>(() => {
     try {
-      const raw = localStorage.getItem(`av:${key}`);
+      const raw = localStorage.getItem(`groundcontrol:${key}`);
       return raw === null ? initial : (JSON.parse(raw) as T);
     } catch {
       return initial;
@@ -30,7 +30,7 @@ function usePersisted<T>(key: string, initial: T): [T, (v: T) => void] {
     (next: T) => {
       setV(next);
       try {
-        localStorage.setItem(`av:${key}`, JSON.stringify(next));
+        localStorage.setItem(`groundcontrol:${key}`, JSON.stringify(next));
       } catch {
         // storage unavailable
       }
@@ -48,8 +48,8 @@ function useAttention(snapshot: Snapshot | undefined, notify: boolean) {
     const needs = snapshot.agents.filter((a) => a.state === "blocked" || a.state === "waiting");
     const blocked = needs.filter((a) => a.state === "blocked").length;
     document.title = needs.length
-      ? `(${blocked ? `${blocked}! ` : ""}${needs.length}) agent-visualiser`
-      : "agent-visualiser";
+      ? `(${blocked ? `${blocked}! ` : ""}${needs.length}) Ground Control`
+      : "Ground Control";
     if (
       notify &&
       prev.current.size &&
@@ -102,7 +102,10 @@ export function App() {
 
   const counts = useMemo(() => {
     const c: Partial<Record<AgentState, number>> = {};
-    for (const a of snapshot?.agents ?? []) c[a.state] = (c[a.state] ?? 0) + 1;
+    for (const a of snapshot?.agents ?? []) {
+      const key = a.state === "ended" ? "done" : a.state;
+      c[key] = (c[key] ?? 0) + 1;
+    }
     return c;
   }, [snapshot]);
 
@@ -121,7 +124,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <Logo />
-          <span className="brand-name">agent-visualiser</span>
+          <span className="brand-name">Ground Control</span>
           {snapshot?.mode === "demo" && <span className="demo-badge">demo</span>}
         </div>
         <fieldset className="chips">
@@ -234,13 +237,13 @@ export function App() {
             body={
               <>
                 Start one with <code>claude</code> in any terminal and it will flow in here within a
-                second. Want to see what it looks like first? Run{" "}
-                <code>agent-visualiser --demo</code>.
+                second. Want to see what it looks like first? Run <code>groundcontrol --demo</code>.
               </>
             }
           />
         ) : view === "pipes" ? (
           <PipeView
+            paused={paused}
             snapshot={snapshot}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -268,23 +271,19 @@ export function App() {
 }
 
 function Legend() {
-  const items: [AgentState, string][] = [
-    ["thinking", "thinking"],
-    ["tool", "running a tool"],
-    ["blocked", "needs permission"],
-    ["waiting", "waiting for you"],
-    ["done", "done / exited"],
+  const items: [AgentState, string, string][] = [
+    ["thinking", "in flight", "thinking"],
+    ["tool", "taxiing", "running a tool"],
+    ["waiting", "holding", "waiting for you"],
+    ["blocked", "awaiting clearance", "needs permission"],
+    ["done", "landed", "finished"],
   ];
   return (
     <div className="legend">
-      {items.map(([s, l]) => (
-        <span key={s} className={`legend-item s-${s}`}>
-          <svg width="34" height="12" aria-hidden="true">
-            <path d="M3 6H31" className={`casing s-${s}`} />
-            <path d="M3 6H31" className={`fluid s-${s}`} />
-            {(s === "thinking" || s === "tool") && <path d="M3 6H31" className={`flow s-${s}`} />}
-          </svg>
-          {l}
+      {items.map(([s, term, plain]) => (
+        <span key={s} className={`legend-item s-${s}`} title={plain}>
+          <PlaneIcon size={15} className="legend-plane" />
+          <b>{term}</b> <span className="muted">{plain}</span>
         </span>
       ))}
     </div>
@@ -295,8 +294,9 @@ function Empty({ title, body }: { title: string; body?: React.ReactNode }) {
   return (
     <div className="empty">
       <svg width="220" height="90" viewBox="0 0 220 90" aria-hidden="true">
-        <path d="M10 70H70Q86 70 86 54V36Q86 20 102 20H210" className="casing s-done" />
-        <path d="M10 70H70Q86 70 86 54V36Q86 20 102 20H210" className="fluid s-done" />
+        <path d="M10 70H64Q86 70 86 48V42Q86 20 108 20H210" className="edge s-done" />
+        <path d="M10 70H64Q86 70 86 48V42Q86 20 108 20H210" className="tarmac s-done" />
+        <path d="M10 70H64Q86 70 86 48V42Q86 20 108 20H210" className="centreline s-done" />
       </svg>
       <h2>{title}</h2>
       {body && <p>{body}</p>}

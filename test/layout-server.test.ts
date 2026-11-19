@@ -7,6 +7,7 @@ import { findSnippets, traceCode } from "../src/collector/codeTrace.js";
 import { DemoSource } from "../src/demo.js";
 import { isAllowedHost, startServer } from "../src/server.js";
 import type { Snapshot } from "../src/shared/types.js";
+import { flightNumber } from "../web/src/format.js";
 import { buildLayout, pipePath, visibleChain } from "../web/src/layout.js";
 
 describe("layout", () => {
@@ -50,6 +51,17 @@ describe("layout", () => {
     } as unknown as Snapshot;
     const chain = visibleChain({ ancestry: [4, 3, 2, 1] } as never, snap.processes);
     expect(chain.map((p) => p.pid)).toEqual([2]);
+  });
+
+  it("gives every agent a flight number and subagents their parent's number plus a letter", async () => {
+    const snap = await new DemoSource(30 * 60_000).snapshot();
+    const { nodes } = buildLayout(snap);
+    for (const n of nodes.filter((x) => x.agent)) {
+      expect(n.flight).toMatch(/^[A-Z]{3}\d{3}(-[A-Z])?$/);
+      if (n.parent?.agent) expect(n.flight?.startsWith(`${n.parent.flight}-`)).toBe(true);
+    }
+    expect(flightNumber(52482, "VS Code")).toBe("VSC482");
+    expect(flightNumber(7, "orchestrate.py")).toBe("ORC007");
   });
 
   it("draws straight and elbowed pipes", () => {

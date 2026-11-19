@@ -1,22 +1,29 @@
-# agent-visualiser
+# Ground Control
 
-Watch your Claude Code agents flow.
+Air traffic control for your Claude Code agents.
 
 If you run lots of agents (a few terminals, a tmux grid, the desktop app, a Python script fanning out
 `claude -p` workers, a box over SSH), it gets hard to tell which ones are working, which are stuck on
-a permission prompt, and which finished ten minutes ago and are waiting on you. `agent-visualiser` is
+a permission prompt, and which finished ten minutes ago and are waiting on you. Ground Control is
 a local, open-source dashboard that finds every running `claude` process and draws it as a network
-of pipes:
+of routes:
 
 - **Launchers on the left:** Terminal, iTerm2, Ghostty, VS Code, Cursor, Claude Desktop, tmux, a
   cron job, the Python or Node script that spawned the agent, or a remote machine over SSH.
-- **Agents on the right, fed by pipes.** Fluid flows while an agent is **thinking** (a stream) or
-  **running a tool** (bubbles). It turns amber and still when the agent is **waiting for you**, and red
-  with a shut valve when it's **blocked on a permission prompt**.
-- **Subagents** branch off their parent agent.
-- **A timeline** shows the last 30 minutes of each agent as a pipe, so you can see when each one was
-  busy and when it sat idle.
-- **Click anything** to see its full launch chain (launchd → iTerm2 → zsh → `orchestrate.py` →
+- **Agents on the right, connected by taxiways.** Every agent is a flight with a flight number
+  (`VSC482`: launcher plus pid). Its route from the launcher shows what it's doing:
+
+  | Agent state                    | On the taxiway                                                                |
+  | ------------------------------ | ----------------------------------------------------------------------------- |
+  | Thinking                       | **In flight**: a blue plane moves along the route, centreline lights chasing  |
+  | Running a tool                 | **Taxiing**: a green plane, moving faster                                     |
+  | Waiting for you                | **Holding**: the plane parks at an amber hold-short line in front of the card |
+  | Blocked on a permission prompt | **Awaiting clearance**: the plane stops at a blinking red stop bar            |
+  | Finished or exited             | **Landed**: the taxiway goes dark                                             |
+- **Subagents** branch off their parent agent as escorts, numbered `VSC482-A`, `VSC482-B`.
+- **A timeline** shows the last 30 minutes of each agent as a track, so you can see when each one
+  was busy and when it sat idle.
+- **Click anything** to see its flight plan, the full launch chain (launchd → iTerm2 → zsh → `orchestrate.py` →
   `claude`), the lines of the launching script that call Claude, recent tool calls, tokens, git
   branch and working directory.
 
@@ -28,16 +35,16 @@ writes under `~/.claude`, and it serves the UI on `127.0.0.1`.
 Requires Node 22.4+ and macOS or Linux.
 
 ```bash
-git clone https://github.com/<you>/agent-visualiser && cd agent-visualiser
+git clone https://github.com/<you>/groundcontrol && cd groundcontrol
 pnpm install && pnpm build
 node dist/server/cli.js            # opens http://127.0.0.1:4317
 node dist/server/cli.js --demo     # simulated fleet, no agents needed
 ```
 
-Keyboard: `t` toggles pipes and timeline, `+` `-` `0` zoom, `Esc` closes the panel. Click a state
+Keyboard: `t` toggles the map and the timeline, `+` `-` `0` zoom, `Esc` closes the panel. Click a state
 in the top bar to highlight just those agents. "Notify me" sends a desktop notification when an
 agent starts waiting on you, and the tab title always shows how many need attention, e.g.
-`(1! 3) agent-visualiser`.
+`(1! 3) Ground Control`.
 
 ## Remote machines over SSH
 
@@ -48,7 +55,7 @@ shells out to `claude -p`. Add them with `--remote`:
 node dist/server/cli.js --remote devbox --remote me@10.0.0.5
 ```
 
-For each host, `agent-visualiser` opens an ordinary SSH session and runs `agent-visualiser --stream`
+For each host, Ground Control opens an ordinary SSH session and runs `groundcontrol --stream`
 on it. The remote collector writes one JSON snapshot per second to stdout, and trace requests travel
 back over stdin. So:
 
@@ -63,16 +70,16 @@ The remote needs Node 22.4+ and this package installed and on the `PATH` of a no
 To point at a different install, or to use a different SSH client:
 
 ```bash
-node dist/server/cli.js --remote gpu-box --remote-cmd "bash -lc 'cd ~/agent-visualiser && node dist/server/cli.js --stream'"
+node dist/server/cli.js --remote gpu-box --remote-cmd "bash -lc 'cd ~/groundcontrol && node dist/server/cli.js --stream'"
 node dist/server/cli.js --remote prod-bastion --ssh "tsh ssh"
 node dist/server/cli.js --remote devbox --no-local   # only the remote
 ```
 
-The default remote command is deliberately not `npx -y agent-visualiser`: that would download and
+The default remote command is deliberately not `npx -y groundcontrol`: that would download and
 run whatever is currently published under that name. Use npx explicitly via `--remote-cmd` once
 you've checked what the package is.
 
-Prefer a classic tunnel? Run `agent-visualiser` on the server, then
+Prefer a classic tunnel? Run `groundcontrol` on the server, then
 `ssh -L 4317:127.0.0.1:4317 devbox` and open `http://localhost:4317`. That works too: the server
 only accepts loopback Host headers, which a tunnel provides.
 
@@ -110,7 +117,7 @@ their project folder created closest to the process start.
     --json            Print one snapshot and exit
     --no-open         Don't open a browser
     --remote <target> Watch an SSH host too (repeatable)
-    --remote-cmd <c>  Remote command (default "agent-visualiser --stream")
+    --remote-cmd <c>  Remote command (default "groundcontrol --stream")
     --ssh <cmd>       SSH client (default "ssh")
     --no-local        Only remote hosts
     --stream          Remote end of --remote: JSON lines on stdout
@@ -144,6 +151,6 @@ Windows isn't supported yet: process ancestry needs a different backend there. P
 App logos are from [gilbarbara/logos](https://github.com/gilbarbara/logos) (CC0) and
 [Simple Icons](https://simpleicons.org) (CC0), and interface glyphs from [Lucide](https://lucide.dev)
 (ISC). See `web/public/icons/icons-credits.json`. Product names and logos are trademarks of their
-owners and are used only to name the app an agent was launched from. Type is Geist (SIL OFL).
+owners and are used only to name the app an agent was launched from. Type is Reddit Sans and JetBrains Mono (SIL OFL).
 
 MIT licensed.
