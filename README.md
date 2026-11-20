@@ -1,73 +1,76 @@
-# Ground Control
+<h1 align="center">Ground Control</h1>
 
-Air traffic control for your Claude Code agents.
+<p align="center"><b>Air traffic control for your Claude Code agents.</b><br>
+Every running <code>claude</code> is a plane on a taxiway from the app or script that launched it.<br>
+See at a glance who's working, who's waiting on you, and who's stuck on a permission prompt.</p>
 
-If you run lots of agents (a few terminals, a tmux grid, the desktop app, a Python script fanning out
-`claude -p` workers, a box over SSH), it gets hard to tell which ones are working, which are stuck on
-a permission prompt, and which finished ten minutes ago and are waiting on you. Ground Control is
-a local, open-source dashboard that finds every running `claude` process and draws it as a network
-of routes:
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/hero-light.png">
+    <img src="docs/hero-dark.png" alt="Ground Control showing agents from Claude Desktop, cron, a Python orchestrator, tmux and VS Code as planes on taxiways" width="900">
+  </picture>
+</p>
 
-- **Launchers on the left:** Terminal, iTerm2, Ghostty, VS Code, Cursor, Claude Desktop, tmux, a
-  cron job, the Python or Node script that spawned the agent, or a remote machine over SSH.
-- **Agents on the right, connected by taxiways.** Every agent is a flight with a flight number
-  (`VSC482`: launcher plus pid). Its route from the launcher shows what it's doing:
+## Read the map
 
-  | Agent state                    | On the taxiway                                                                |
-  | ------------------------------ | ----------------------------------------------------------------------------- |
-  | Thinking                       | **In flight**: a blue plane moves along the route, centreline lights chasing  |
-  | Running a tool                 | **Taxiing**: a green plane, moving faster                                     |
-  | Waiting for you                | **Holding**: the plane parks at an amber hold-short line in front of the card |
-  | Blocked on a permission prompt | **Awaiting clearance**: the plane stops at a blinking red stop bar            |
-  | Finished or exited             | **Landed**: the taxiway goes dark                                             |
-- **Subagents** branch off their parent agent as escorts, numbered `VSC482-A`, `VSC482-B`.
-- **A timeline** shows the last 30 minutes of each agent as a track, so you can see when each one
-  was busy and when it sat idle.
-- **Click anything** to see its flight plan, the full launch chain (launchd → iTerm2 → zsh → `orchestrate.py` →
-  `claude`), the lines of the launching script that call Claude, recent tool calls, tokens, git
-  branch and working directory.
+| You see                                                                   | It means                                             |
+| ------------------------------------------------------------------------- | ---------------------------------------------------- |
+| <img src="docs/plane-in-flight.svg" width="18"> moving                    | **In flight**: the agent is thinking                 |
+| <img src="docs/plane-taxiing.svg" width="18"> moving faster               | **Taxiing**: it's running a tool (shown on the card) |
+| <img src="docs/plane-holding.svg" width="18"> parked at the hold line     | **Holding**: turn finished, it's waiting for you     |
+| <img src="docs/plane-clearance.svg" width="18"> stopped at a red stop bar | **Awaiting clearance**: it needs your permission     |
+| <img src="docs/plane-landed.svg" width="18"> dark taxiway                 | **Landed**: finished or exited                       |
 
-Everything runs on your machine. It reads only process metadata and files Claude Code already
-writes under `~/.claude`, and it serves the UI on `127.0.0.1`.
+Launchers on the left (Terminal, iTerm2, Ghostty, VS Code, Cursor, Claude Desktop, tmux, cron, your
+own scripts, remote servers) feed agents on the right. Subagents branch off their parent. Every agent
+gets a flight number like `VSC482`.
 
-## Quick start
+<p align="center"><img src="docs/taxiways.gif" alt="Planes moving along taxiways while agents work, and parked at hold lines while they wait" width="900"></p>
 
-Requires Node 22.4+ and macOS or Linux.
+## Try it
+
+Requires Node 22.4+ on macOS or Linux.
 
 ```bash
 git clone https://github.com/djcopp/groundcontrol && cd groundcontrol
 pnpm install && pnpm build
-node dist/server/cli.js            # opens http://127.0.0.1:4317
-node dist/server/cli.js --demo     # simulated fleet, no agents needed
+node dist/server/cli.js --demo   # a simulated fleet
+node dist/server/cli.js          # your real agents, at http://127.0.0.1:4317
 ```
 
-Keyboard: `t` toggles the map and the timeline, `+` `-` `0` zoom, `Esc` closes the panel. Click a state
-in the top bar to highlight just those agents. "Notify me" sends a desktop notification when an
-agent starts waiting on you, and the tab title always shows how many need attention, e.g.
-`(1! 3) Ground Control`.
+## Click any flight
 
-## Remote machines over SSH
+<table>
+  <tr>
+    <td width="38%"><img src="docs/flight-plan.png" alt="Flight plan: launchd, Ghostty, zsh, orchestrate.py, claude, and the lines of orchestrate.py that call the Agent SDK"></td>
+    <td>
+      <b>Flight plan</b>: the full launch chain, from the terminal or app down through shells, tmux and
+      scripts to the agent.<br><br>
+      <b>Calling code</b>: if a script launched it, the exact lines that call Claude.<br><br>
+      Also: project, git branch, model, tokens, CPU and the flight log of recent tool calls.
+    </td>
+  </tr>
+</table>
 
-Lots of agents run on servers: a GPU box, a devcontainer host, a bot that answers in Slack and
-shells out to `claude -p`. Add them with `--remote`:
+**Timeline** (press `t`): the last 30 minutes of every agent, so you can see who worked and who sat waiting.
+
+<p align="center"><img src="docs/timeline.png" alt="Timeline of each agent's last 30 minutes, coloured by state" width="900"></p>
+
+## Watch your servers too
 
 ```bash
 node dist/server/cli.js --remote devbox --remote me@10.0.0.5
 ```
 
-For each host, Ground Control opens an ordinary SSH session and runs `groundcontrol --stream`
-on it. The remote collector writes one JSON snapshot per second to stdout, and trace requests travel
-back over stdin. So:
+Runs `groundcontrol --stream` on each host over plain SSH, using your own keys and `~/.ssh/config`.
+No ports are opened anywhere, and the remote side exits when the session ends. A Slack bot that
+shells out to `claude -p` on your server shows up with its script as the launcher. Claude in Slack
+and other cloud sessions run on Anthropic's machines, so there's nothing local to watch.
 
-- **No ports are opened** on either side and nothing is exposed to the network. Auth, jump hosts and
-  aliases all come from your own `~/.ssh/config` and agent. `BatchMode` is on, so a host that wants
-  a password shows an error instead of hanging.
-- **The remote collector exits when the SSH session ends.** Nothing is left running on the server.
-- Each machine becomes its own root in the pipe view, with its launchers and agents under it. A host
-  that can't connect shows the last SSH error on its node.
+<details>
+<summary>Remote setup details</summary>
 
-The remote needs Node 22.4+ and this package installed and on the `PATH` of a non-interactive shell.
-To point at a different install, or to use a different SSH client:
+The remote needs Node 22.4+ and Ground Control on the `PATH` of a non-interactive shell.
 
 ```bash
 node dist/server/cli.js --remote gpu-box --remote-cmd "bash -lc 'cd ~/groundcontrol && node dist/server/cli.js --stream'"
@@ -75,36 +78,36 @@ node dist/server/cli.js --remote prod-bastion --ssh "tsh ssh"
 node dist/server/cli.js --remote devbox --no-local   # only the remote
 ```
 
-The default remote command is deliberately not `npx -y groundcontrol`: that would download and
-run whatever is currently published under that name. Use npx explicitly via `--remote-cmd` once
-you've checked what the package is.
+- `BatchMode` is on, so a host that wants a password shows an error instead of hanging.
+- The default remote command is deliberately not `npx -y groundcontrol`, which would run whatever
+  is published under that name.
+- A classic tunnel works too: run Ground Control on the server, then
+  `ssh -L 4317:127.0.0.1:4317 devbox`.
 
-Prefer a classic tunnel? Run `groundcontrol` on the server, then
-`ssh -L 4317:127.0.0.1:4317 devbox` and open `http://localhost:4317`. That works too: the server
-only accepts loopback Host headers, which a tunnel provides.
+</details>
 
-**What it can't see:** Claude in Slack, Claude on the web and other cloud-run sessions run on
-Anthropic's infrastructure, not as a process on any machine you control, so there is nothing to
-watch. A self-hosted Slack bot that spawns `claude` on your own server is visible: add that server
-with `--remote`, and the bot's script appears as the agent's launcher, with the lines that call Claude.
+## How it knows
 
-## How it works
+<details>
+<summary>Where every piece of data comes from</summary>
 
-| What you see                      | Where it comes from                                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Which agents exist                | `ps`: any process whose executable is `claude` (native, desktop-bundled, or the npm `cli.js` under node)                                          |
-| Where it was launched from        | the parent-process chain, classified into apps, terminals, IDEs, multiplexers, SSH and interpreters; shells and wrappers are folded into the pipe |
-| The calling code                  | for interpreters in the chain, the script file is read and lines mentioning `claude`, `anthropic` or the Agent SDK are shown with context         |
-| Working dir and branch            | `lsof` (macOS) or `/proc/<pid>/cwd` (Linux), then `.git/HEAD` read directly                                                                       |
-| Busy or idle                      | `~/.claude/sessions/<pid>.json`, written by Claude Code itself (the sibling `.key` files are never opened)                                        |
-| Thinking, tool, waiting, timeline | the session transcript `~/.claude/projects/<dir>/<session>.jsonl`, tailed incrementally                                                           |
-| Blocked on permission             | a pending tool call while the session is idle, an Edit or Write pending for more than 6 s, or a Bash call pending with no child process           |
-| Subagents                         | `<session>/subagents/agent-*.jsonl` and their `.meta.json`                                                                                        |
+| What you see               | Source                                                                                               |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Which agents exist         | `ps`: processes whose executable is `claude` (native, desktop-bundled, or npm `cli.js`)              |
+| Where it was launched from | the parent-process chain, classified into apps, terminals, IDEs, tmux, SSH and interpreters          |
+| Calling code               | the launching script, read for lines mentioning `claude`, `anthropic` or the Agent SDK               |
+| Directory and branch       | `lsof` (macOS) or `/proc/<pid>/cwd` (Linux), then `.git/HEAD`                                        |
+| Busy or idle               | `~/.claude/sessions/<pid>.json`, written by Claude Code (the `.key` files are never opened)          |
+| Thinking, tool, waiting    | the session transcript `~/.claude/projects/<dir>/<session>.jsonl`, tailed incrementally              |
+| Awaiting clearance         | a pending tool call while idle, an Edit/Write pending over 6 s, or a Bash call with no child process |
+| Subagents                  | `<session>/subagents/agent-*.jsonl` and `.meta.json`                                                 |
 
-Headless agents (`claude -p`, SDK) often have no session file. They're matched to the transcript in
-their project folder created closest to the process start.
+Headless agents (`claude -p`, SDK) are matched to the transcript created closest to their start.
 
-## Options
+</details>
+
+<details>
+<summary>All options</summary>
 
 ```
 -p, --port <n>        Port (default 4317)
@@ -123,34 +126,33 @@ their project folder created closest to the process start.
     --stream          Remote end of --remote: JSON lines on stdout
 ```
 
-## Privacy and security
+Keyboard: `t` map/timeline, `+` `-` `0` zoom, `Esc` close. "Notify me" sends a desktop
+notification when an agent starts waiting, and the tab title counts them, e.g. `(1! 3) Ground Control`.
 
-- The UI shows commands, paths, tool arguments and session names. It binds to `127.0.0.1`
-  and rejects requests whose `Host` header isn't loopback, which blocks DNS-rebinding attacks from
-  web pages. `--host 0.0.0.0` prints a warning, because anyone who can reach the port can see all of it.
-- `--no-details` drops tool arguments at the source.
-- No telemetry and no network calls. Fonts and icons are bundled.
+</details>
+
+## Privacy
+
+Local only. It binds to `127.0.0.1`, rejects non-loopback `Host` headers (blocking DNS rebinding),
+and makes no network calls; fonts and icons are bundled. `--no-details` hides commands and file
+names.
 
 ## Development
 
 ```bash
-pnpm dev        # API on :4317 + Vite UI on :5173 with hot reload
+pnpm dev        # API on :4317 + Vite UI on :5173
 pnpm dev:demo   # same, simulated agents
-pnpm test       # vitest
-pnpm typecheck && pnpm lint && pnpm build
+pnpm test && pnpm typecheck && pnpm lint && pnpm build
 ```
 
-Layout: `src/collector/*` (process, session and transcript reading), `src/server.ts` (HTTP + SSE),
-`src/remote.ts` (SSH hosts), `src/demo.ts`, `web/src/*` (React UI; `layout.ts` turns a snapshot
-into pipe geometry).
-
-Windows isn't supported yet: process ancestry needs a different backend there. PRs welcome.
+`src/collector` reads processes, sessions and transcripts; `src/server.ts` serves HTTP and SSE;
+`src/remote.ts` handles SSH hosts; `web/src` is the React UI (`layout.ts` turns a snapshot into the
+map). Windows isn't supported yet; PRs welcome.
 
 ## Credits
 
-App logos are from [gilbarbara/logos](https://github.com/gilbarbara/logos) (CC0) and
-[Simple Icons](https://simpleicons.org) (CC0), and interface glyphs from [Lucide](https://lucide.dev)
-(ISC). See `web/public/icons/icons-credits.json`. Product names and logos are trademarks of their
-owners and are used only to name the app an agent was launched from. Type is Reddit Sans and JetBrains Mono (SIL OFL).
-
+App logos from [gilbarbara/logos](https://github.com/gilbarbara/logos) and
+[Simple Icons](https://simpleicons.org) (CC0), glyphs from [Lucide](https://lucide.dev) (ISC); see
+`web/public/icons/icons-credits.json`. Product names and logos are trademarks of their owners, used
+only to name the app an agent was launched from. Type: Reddit Sans and JetBrains Mono (SIL OFL).
 MIT licensed.
