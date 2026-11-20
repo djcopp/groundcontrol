@@ -11,7 +11,6 @@ import {
   toolName,
 } from "./format.js";
 import { AppIcon, Glyph } from "./icons.js";
-import { buildLayout } from "./layout.js";
 import { MiniTimeline } from "./MiniTimeline.js";
 
 function useTrace(agentId: string | undefined) {
@@ -105,8 +104,15 @@ function Code({ trace, onlyPid }: { trace?: TraceResponse; onlyPid?: number }) {
   );
 }
 
-function AgentDetail({ agent, snapshot }: { agent: Agent; snapshot: Snapshot }) {
-  const flight = buildLayout(snapshot).nodes.find((n) => n.agent?.id === agent.id)?.flight;
+function AgentDetail({
+  agent,
+  snapshot,
+  flight,
+}: {
+  agent: Agent;
+  snapshot: Snapshot;
+  flight?: string;
+}) {
   const { trace, error } = useTrace(agent.kind === "agent" ? agent.id : agent.parentAgentId);
   const now = snapshot.generatedAt;
   const subagents = snapshot.agents.filter((a) => a.parentAgentId === agent.id);
@@ -335,10 +341,13 @@ function HostDetail({ name, snapshot }: { name: string; snapshot: Snapshot }) {
 export function DetailPanel({
   id,
   snapshot,
+  flight,
   onClose,
 }: {
   id: string;
   snapshot: Snapshot;
+  /** The selected agent's flight number, from the shared layout. */
+  flight?: string;
   onClose: () => void;
 }) {
   const agent = snapshot.agents.find((a) => a.id === id);
@@ -349,7 +358,7 @@ export function DetailPanel({
         <Glyph name="x" size={16} />
       </button>
       {agent ? (
-        <AgentDetail agent={agent} snapshot={snapshot} />
+        <AgentDetail agent={agent} snapshot={snapshot} flight={flight} />
       ) : proc ? (
         <ProcessDetail proc={proc} snapshot={snapshot} />
       ) : id.startsWith("host:") ? (

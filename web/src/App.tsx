@@ -3,6 +3,7 @@ import type { AgentState, Snapshot } from "../../src/shared/types.js";
 import { DetailPanel } from "./DetailPanel.js";
 import { STATE_LABEL } from "./format.js";
 import { Glyph, Logo, PlaneIcon } from "./icons.js";
+import { buildLayout } from "./layout.js";
 import { PipeView } from "./PipeView.js";
 import { TimelineView } from "./TimelineView.js";
 import { useSnapshot } from "./useSnapshot.js";
@@ -83,6 +84,11 @@ export function App() {
   const [selectedId, setSelectedId] = useState<string>();
   const [focus, setFocus] = useState<AgentState>();
   useAttention(snapshot, notify);
+  // One layout per snapshot, shared by the canvas and the detail panel's flight number.
+  const layout = useMemo(
+    () => (snapshot ? buildLayout(snapshot, { hideFinished }) : undefined),
+    [snapshot, hideFinished],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -241,14 +247,14 @@ export function App() {
               </>
             }
           />
-        ) : view === "pipes" ? (
+        ) : view === "pipes" && layout ? (
           <PipeView
             paused={paused}
             snapshot={snapshot}
             selectedId={selectedId}
             onSelect={setSelectedId}
             focus={focus}
-            hideFinished={hideFinished}
+            layout={layout}
             zoom={zoom}
           />
         ) : (
@@ -264,7 +270,12 @@ export function App() {
       </main>
 
       {selectedId && snapshot && (
-        <DetailPanel id={selectedId} snapshot={snapshot} onClose={() => setSelectedId(undefined)} />
+        <DetailPanel
+          id={selectedId}
+          snapshot={snapshot}
+          flight={layout?.nodes.find((n) => n.agent?.id === selectedId)?.flight}
+          onClose={() => setSelectedId(undefined)}
+        />
       )}
     </div>
   );

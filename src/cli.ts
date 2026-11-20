@@ -119,7 +119,7 @@ async function main() {
     const remotes = remoteTargets.map(
       (target) => new RemoteHost({ target, remoteCommand, ssh: values.ssh ?? "ssh" }),
     );
-    multi = new MultiSource(values.local === false ? undefined : localSource, remotes);
+    multi = new MultiSource(values.local === false ? undefined : localSource, remotes, windowMs);
     multi.start();
   } else if (values.local === false) {
     throw new Error("--no-local needs at least one --remote host");
@@ -127,7 +127,10 @@ async function main() {
   const source: Source = multi ?? localSource;
 
   if (values.json) {
+    // Give remote hosts a moment to answer, then stop their SSH sessions so the process can exit.
+    await multi?.ready(15_000);
     process.stdout.write(`${JSON.stringify(await source.snapshot(), null, 2)}\n`);
+    multi?.stop();
     return;
   }
 

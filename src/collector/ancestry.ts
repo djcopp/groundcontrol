@@ -83,6 +83,22 @@ const UV_VALUE_FLAGS = new Set([
   "--from",
 ]);
 
+/** Interpreter flags whose value is the next argument, so it is not mistaken for the script. */
+const PY_VALUE_FLAGS = new Set(["-W", "-X", "-Q", "--check-hash-based-pycs"]);
+const JS_VALUE_FLAGS = new Set([
+  "-r",
+  "--require",
+  "--import",
+  "--loader",
+  "--experimental-loader",
+  "--env-file",
+  "--inspect-port",
+  "--title",
+  "--conditions",
+  "-C",
+  "--config",
+]);
+
 /** Split a ps command line into argv. ps does not quote, so this is best effort. */
 export function splitCommand(command: string): string[] {
   return command.split(/\s+/).filter(Boolean);
@@ -96,6 +112,10 @@ export function extractScript(interp: string, args: string[]): string | undefine
       const a = args[i] ?? "";
       if (a === "-m") return args[i + 1] ? `-m ${args[i + 1]}` : undefined;
       if (a === "-c") return "-c (inline)";
+      if (PY_VALUE_FLAGS.has(a)) {
+        i++; // skip the flag's value
+        continue;
+      }
       if (a.startsWith("-")) continue;
       return a;
     }
@@ -120,11 +140,19 @@ export function extractScript(interp: string, args: string[]): string | undefine
     const words = args.filter((a) => !a.startsWith("-")).slice(0, 2);
     return words.length ? `${base} ${words.join(" ")}` : undefined;
   }
-  // node, bun, deno, ruby, tsx...: first non-flag argument (skip deno's `run`).
-  const filtered = args.filter((a) => !a.startsWith("-"));
-  if (base === "deno" && filtered[0] === "run") return filtered[1];
-  if (base === "bun" && filtered[0] === "run") return filtered[1];
-  return filtered[0];
+  // node, bun, deno, ruby, tsx...: first non-flag argument (skip deno's and bun's `run`).
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i] ?? "";
+    if (a === "-e" || a === "--eval" || a === "-p" || a === "--print") return "-e (inline)";
+    if (JS_VALUE_FLAGS.has(a)) {
+      i++; // skip the flag's value
+      continue;
+    }
+    if (!a.startsWith("-")) positional.push(a);
+  }
+  if ((base === "deno" || base === "bun") && positional[0] === "run") return positional[1];
+  return positional[0];
 }
 
 export function classify(p: Pick<RawProcess, "pid" | "comm" | "command">): Classification {
@@ -145,14 +173,19 @@ export function classify(p: Pick<RawProcess, "pid" | "comm" | "command">): Class
     return { kind: "remote", label: "SSH" };
   if (SHELLS.has(exeBase)) return { kind: "shell", label: exeBase };
   if (/^(cron|crond|launchd)$/.test(exeBase)) return { kind: "other", label: exeBase };
-  if (INTERPRETER_RE.test(exeBase)) {
-    const argv = splitCommand(command);
-    const script = extractScript(exeBase, argv.slice(1));
-    let label = exeBase;
-    if (script?.startsWith(`${exeBase} `))
+  // macOS framework builds re-exec as .../Python.app/Contents/MacOS/Python, so match case-insensitively.
+  const interp = exeBase.toLowerCase();
+  if (INTERPRETER_RE.test(interp)) {
+    // Drop argv0 by the known executable path when possible, so a path with spaces stays whole.
+    const rest = command.startsWith(comm)
+      ? command.slice(comm.length)
+      : command.replace(/^\S+/, "");
+    const script = extractScript(interp, splitCommand(rest));
+    let label = interp;
+    if (script?.startsWith(`${interp} `))
       label = script; // "pnpm run agents"
     else if (script && (script.startsWith("-") || script.includes(" ")))
-      label = `${exeBase} ${script}`;
+      label = `${interp} ${script}`;
     else if (script) label = basename(script);
     return { kind: "script", label, script };
   }

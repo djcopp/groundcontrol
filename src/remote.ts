@@ -195,9 +195,20 @@ export class MultiSource implements Source {
   private readonly local: Source | undefined;
   private readonly remotes: RemoteHost[];
 
-  constructor(local: Source | undefined, remotes: RemoteHost[]) {
+  private readonly windowMs: number;
+
+  constructor(local: Source | undefined, remotes: RemoteHost[], windowMs = 30 * 60_000) {
     this.local = local;
     this.remotes = remotes;
+    this.windowMs = windowMs;
+  }
+
+  /** Resolve once every remote has delivered a snapshot or failed, or after `timeoutMs`. */
+  async ready(timeoutMs: number): Promise<void> {
+    const end = Date.now() + timeoutMs;
+    while (Date.now() < end && this.remotes.some((r) => r.hostStatus().status === "connecting")) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
   }
 
   start() {
@@ -217,7 +228,7 @@ export class MultiSource implements Source {
           mode: "live",
           host: hostname(),
           platform: process.platform,
-          windowMs: 30 * 60_000,
+          windowMs: this.windowMs,
           agents: [],
           processes: {},
           warnings: [],

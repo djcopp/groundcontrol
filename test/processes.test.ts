@@ -140,6 +140,24 @@ describe("classify", () => {
     expect(c("pnpm", "pnpm run agents")).toMatchObject({ label: "pnpm run agents" });
   });
 
+  it("recognises macOS framework Python, which re-execs as Python.app", () => {
+    const comm =
+      "/opt/homebrew/Cellar/python@3.15/3.15.2/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python";
+    expect(c(comm, `${comm} -u orchestrate.py --shards 4`)).toMatchObject({
+      kind: "script",
+      label: "orchestrate.py",
+      script: "orchestrate.py",
+    });
+  });
+
+  it("skips the values of flags that take one", () => {
+    expect(c("node", "node --require dotenv/config agents.js")).toMatchObject({
+      script: "agents.js",
+    });
+    expect(c("python3", "python3 -W ignore run.py")).toMatchObject({ script: "run.py" });
+    expect(c("node", "node -e console.log(1)")).toMatchObject({ script: "-e (inline)" });
+  });
+
   it("extractScript handles python -c and missing args", () => {
     expect(extractScript("python3", ["-c", "print(1)"])).toBe("-c (inline)");
     expect(extractScript("python3", [])).toBeUndefined();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { AgentState, Snapshot } from "../../src/shared/types.js";
 import {
   duration,
@@ -11,7 +11,7 @@ import {
   toolName,
 } from "./format.js";
 import { AppIcon, PLANE_PATH, PlaneIcon } from "./icons.js";
-import { buildLayout, type LNode, type Pipe } from "./layout.js";
+import type { Layout, LNode, Pipe } from "./layout.js";
 import { MiniTimeline } from "./MiniTimeline.js";
 
 /** Planes taxi along routes whose agent is working. */
@@ -37,7 +37,7 @@ export interface PipeViewProps {
   selectedId?: string;
   onSelect: (id: string | undefined) => void;
   focus?: AgentState;
-  hideFinished: boolean;
+  layout: Layout;
   zoom: number;
   paused: boolean;
 }
@@ -47,11 +47,10 @@ export function PipeView({
   selectedId,
   onSelect,
   focus,
-  hideFinished,
+  layout,
   zoom,
   paused,
 }: PipeViewProps) {
-  const layout = useMemo(() => buildLayout(snapshot, { hideFinished }), [snapshot, hideFinished]);
   const now = snapshot.generatedAt;
   const nodeDim = (n: LNode) => {
     if (!focus) return false;
@@ -126,7 +125,7 @@ export function PipeView({
             </g>
             <g className="layer-markings">
               {layout.pipes
-                .filter((p) => PARKED.has(p.state))
+                .filter((p) => PARKED.has(p.state) && p.to.agent)
                 .map((p) => {
                   const x = p.x1 - HOLD + 12;
                   return p.state === "blocked" ? (
@@ -177,7 +176,7 @@ export function PipeView({
                   );
                 })}
               {layout.pipes
-                .filter((p) => PARKED.has(p.state))
+                .filter((p) => PARKED.has(p.state) && p.to.agent)
                 .map((p) => (
                   <g
                     key={p.id}
