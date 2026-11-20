@@ -35,7 +35,7 @@ writes under `~/.claude`, and it serves the UI on `127.0.0.1`.
 Requires Node 22.4+ and macOS or Linux.
 
 ```bash
-git clone https://github.com/<you>/groundcontrol && cd groundcontrol
+git clone https://github.com/djcopp/groundcontrol && cd groundcontrol
 pnpm install && pnpm build
 node dist/server/cli.js            # opens http://127.0.0.1:4317
 node dist/server/cli.js --demo     # simulated fleet, no agents needed
