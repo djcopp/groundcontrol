@@ -27,7 +27,12 @@ export function tokens(n: number): string {
 }
 
 export function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  // 24-hour keeps times compact (no "AM" wrapping in narrow columns) and unambiguous across locales.
+  return new Date(ms).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
 }
 
 /** Aviation term first, plain meaning second, so the theme never hides what is going on. */

@@ -79,7 +79,9 @@ export function TimelineView({
     const step =
       windowMs <= 15 * 60_000 ? 60_000 : windowMs <= 60 * 60_000 ? 5 * 60_000 : 15 * 60_000;
     const out: number[] = [];
-    for (let t = Math.ceil(start / step) * step; t <= now; t += step) out.push(t);
+    // Leave room for the "now" label at the right edge so the last tick never overlaps it.
+    const clearance = windowMs * 0.06;
+    for (let t = Math.ceil(start / step) * step; t <= now - clearance; t += step) out.push(t);
     return out;
   }, [start, now, windowMs]);
 
